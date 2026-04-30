@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worth It?</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ========== HERO ========== -->
+  <section class="hero" id="top">
+    <div class="hero__inner">
+      <p class="hero__eyebrow">The smart shopper's calculator</p>
+      <h1 class="hero__title">Worth It?</h1>
+      <p class="hero__subtitle">Find out if a purchase will actually save you money over time</p>
+      <p class="hero__body">
+        Stop second-guessing big purchases. Enter the one-time cost and what you
+        currently spend on the alternative — we'll tell you exactly when it pays
+        for itself (and how much you'll save per year).
+      </p>
+      <a href="#calculator" class="btn btn--primary hero__cta">Run the numbers</a>
+    </div>
+  </section>
+
+  <!-- ========== NAVIGATION ========== -->
+  <nav class="nav" id="nav">
+    <div class="container">
+      <div class="nav__links">
+        <a href="#calculator" class="nav__link">Calculator</a>
+        <a href="#saved" class="nav__link">Saved</a>
+        <a href="#wishlist" class="nav__link">Wishlist</a>
+        <a href="#calendar" class="nav__link">Calendar</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ========== EXAMPLES ========== -->
+  <section class="examples" id="examples">
+    <div class="container">
+      <h2 class="section-title">Try an example</h2>
+      <p class="section-sub">Click any card to auto-fill the calculator</p>
+      <div class="examples__grid">
+
+        <button class="example-card" data-example="gel-nails" aria-label="Load gel nail kit example">
+          <span class="example-card__emoji">💅</span>
+          <span class="example-card__name">Gel Nail Kit</span>
+          <span class="example-card__desc">vs. salon visits</span>
+        </button>
+
+        <button class="example-card" data-example="espresso" aria-label="Load espresso machine example">
+          <span class="example-card__emoji">☕</span>
+          <span class="example-card__name">Espresso Machine</span>
+          <span class="example-card__desc">vs. buying coffee out</span>
+        </button>
+
+        <button class="example-card" data-example="walking-pad" aria-label="Load walking pad example">
+          <span class="example-card__emoji">🚶‍♀️</span>
+          <span class="example-card__name">Walking Pad</span>
+          <span class="example-card__desc">vs. gym membership</span>
+        </button>
+
+        <button class="example-card" data-example="sports-bras" aria-label="Load sports bras example">
+          <span class="example-card__emoji">🩱</span>
+          <span class="example-card__name">Quality Sports Bras</span>
+          <span class="example-card__desc">vs. cheap replacements</span>
+        </button>
+
+        <button class="example-card" data-example="laser" aria-label="Load laser hair removal example">
+          <span class="example-card__emoji">✨</span>
+          <span class="example-card__name">Laser Hair Removal</span>
+          <span class="example-card__desc">vs. salon appointments</span>
+        </button>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CALCULATOR ========== -->
+  <section class="calculator-section" id="calculator">
+    <div class="container">
+      <h2 class="section-title">The Calculator</h2>
+      <p class="section-sub">Fill in the details below and hit Calculate</p>
+
+      <!-- Mode tabs -->
+      <div class="calc-tabs" role="tablist" aria-label="Calculator mode">
+        <button class="calc-tab calc-tab--active" data-mode="vs-service" role="tab" aria-selected="true">
+          <span class="calc-tab__emoji">⚖️</span>
+          <div class="calc-tab__text">
+            <strong>vs. Alternative</strong>
+            <span>Does buying replace a recurring cost?</span>
+          </div>
+        </button>
+        <button class="calc-tab" data-mode="product-value" role="tab" aria-selected="false">
+          <span class="calc-tab__emoji">🏷️</span>
+          <div class="calc-tab__text">
+            <strong>Product Value</strong>
+            <span>Is this product worth the price?</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- ── MODE: vs Alternative (existing) ── -->
+      <div id="mode-vs-service">
+        <div class="calc-card">
+          <form id="calc-form" novalidate>
+
+            <fieldset class="form-group">
+              <legend class="form-group__legend">About the product</legend>
+              <div class="field">
+                <label for="productName">Product name <span class="required">*</span></label>
+                <input type="text" id="productName" placeholder="e.g. Gel nail kit" autocomplete="off" />
+                <span class="field__error" id="err-productName"></span>
+              </div>
+              <div class="field">
+                <label for="productCost">One-time product cost ($) <span class="required">*</span></label>
+                <input type="number" id="productCost" placeholder="e.g. 120" min="0" step="0.01" />
+                <span class="field__error" id="err-productCost"></span>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-group">
+              <legend class="form-group__legend">About the alternative</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label for="alternativeCost">Cost per visit/use ($) <span class="required">*</span></label>
+                  <input type="number" id="alternativeCost" placeholder="e.g. 65" min="0" step="0.01" />
+                  <span class="field__error" id="err-alternativeCost"></span>
+                </div>
+                <div class="field">
+                  <label for="frequencyPerMonth">Times per month <span class="required">*</span></label>
+                  <input type="number" id="frequencyPerMonth" placeholder="e.g. 1" min="0" step="0.5" />
+                  <span class="field__error" id="err-frequencyPerMonth"></span>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-group">
+              <legend class="form-group__legend">Your usage</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label for="usagePerMonth">Expected uses per month <span class="required">*</span></label>
+                  <input type="number" id="usagePerMonth" placeholder="e.g. 4" min="0" step="0.5" />
+                  <span class="field__error" id="err-usagePerMonth"></span>
+                </div>
+                <div class="field">
+                  <label for="maintenanceCost">Monthly upkeep / refills ($) <span class="optional">optional</span></label>
+                  <input type="number" id="maintenanceCost" placeholder="e.g. 8" min="0" step="0.01" />
+                </div>
+              </div>
+              <div class="field field--half">
+                <label for="lifespanMonths">Product lifespan (months) <span class="optional">optional</span></label>
+                <input type="number" id="lifespanMonths" placeholder="e.g. 36" min="1" step="1" />
+                <p class="field__hint">Leave blank to calculate indefinitely</p>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn--primary" id="btn-calculate">Calculate</button>
+              <button type="button" class="btn btn--secondary" id="btn-save">Save</button>
+              <button type="button" class="btn btn--ghost" id="btn-clear">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="results-card" id="results" aria-live="polite" hidden>
+          <div class="results-header">
+            <h3 class="results-title" id="results-product-name">Product</h3>
+            <span class="verdict-badge" id="verdict-badge"></span>
+          </div>
+          <div class="results-grid">
+            <div class="stat-card">
+              <span class="stat-card__label">Monthly alternative cost</span>
+              <span class="stat-card__value" id="stat-monthly-alt"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card__label">Net monthly savings</span>
+              <span class="stat-card__value" id="stat-monthly-savings"></span>
+            </div>
+            <div class="stat-card stat-card--highlight">
+              <span class="stat-card__label">Break-even</span>
+              <span class="stat-card__value" id="stat-breakeven"></span>
+            </div>
+            <div class="stat-card stat-card--highlight">
+              <span class="stat-card__label">Yearly savings</span>
+              <span class="stat-card__value" id="stat-yearly"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card__label">Cost per use</span>
+              <span class="stat-card__value" id="stat-per-use"></span>
+            </div>
+          </div>
+          <p class="verdict-text" id="verdict-text"></p>
+        </div>
+      </div>
+
+      <!-- ── MODE: Product Value ── -->
+      <div id="mode-product-value" hidden>
+        <div class="calc-card">
+          <form id="pv-form" novalidate>
+
+            <fieldset class="form-group">
+              <legend class="form-group__legend">The product</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label for="pv-name">Product name <span class="required">*</span></label>
+                  <input type="text" id="pv-name" placeholder="e.g. Straight-leg jeans" autocomplete="off" />
+                  <span class="field__error" id="err-pv-name"></span>
+                </div>
+                <div class="field">
+                  <label for="pv-price">Price ($) <span class="required">*</span></label>
+                  <input type="number" id="pv-price" placeholder="e.g. 55" min="0" step="0.01" />
+                  <span class="field__error" id="err-pv-price"></span>
+                </div>
+              </div>
+              <!-- Brand lookup -->
+              <div class="field">
+                <label for="pv-brand">Brand <span class="required">*</span></label>
+                <input type="text" id="pv-brand" placeholder="e.g. Old Navy" autocomplete="off" />
+                <span class="field__error" id="err-pv-brand"></span>
+                <div class="reputation-card" id="reputation-card" hidden>
+                  <div class="reputation-card__header">
+                    <div class="reputation-score">
+                      <span id="rep-dots"></span>
+                      <span class="reputation-score__num" id="rep-score"></span>
+                    </div>
+                    <div>
+                      <p class="reputation-card__label" id="rep-label"></p>
+                      <p class="reputation-card__note"  id="rep-note"></p>
+                    </div>
+                  </div>
+                  <p class="reputation-card__lifespan" id="rep-lifespan"></p>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-group">
+              <legend class="form-group__legend">Your usage</legend>
+              <div class="field-row">
+                <div class="field">
+                  <label for="pv-uses">Uses per month <span class="required">*</span></label>
+                  <input type="number" id="pv-uses" placeholder="e.g. 12" min="0" step="0.5" />
+                  <span class="field__error" id="err-pv-uses"></span>
+                </div>
+                <div class="field">
+                  <label for="pv-lifespan">Expected lifespan (months) <span class="required">*</span></label>
+                  <input type="number" id="pv-lifespan" placeholder="e.g. 24" min="1" step="1" />
+                  <p class="field__hint" id="pv-lifespan-hint">Auto-filled when you enter a known brand</p>
+                  <span class="field__error" id="err-pv-lifespan"></span>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-group">
+              <legend class="form-group__legend">Compare to a cheaper alternative <span class="optional">optional</span></legend>
+              <p class="form-group__desc">We'll calculate whether the cheaper option actually costs less over time once you factor in replacements.</p>
+              <div class="field-row">
+                <div class="field">
+                  <label for="pv-alt-brand">Alternative brand</label>
+                  <input type="text" id="pv-alt-brand" placeholder="e.g. H&amp;M" autocomplete="off" />
+                  <div class="reputation-card reputation-card--alt" id="reputation-card-alt" hidden>
+                    <div class="reputation-card__header">
+                      <div class="reputation-score">
+                        <span id="rep-alt-dots"></span>
+                        <span class="reputation-score__num" id="rep-alt-score"></span>
+                      </div>
+                      <div>
+                        <p class="reputation-card__label" id="rep-alt-label"></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="pv-alt-price">Alternative price ($)</label>
+                  <input type="number" id="pv-alt-price" placeholder="e.g. 25" min="0" step="0.01" />
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn--primary">Calculate</button>
+              <button type="button" class="btn btn--secondary" id="pv-btn-save">Save</button>
+              <button type="button" class="btn btn--ghost" id="pv-btn-clear">Clear</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Product value results -->
+        <div class="results-card" id="pv-results" aria-live="polite" hidden>
+          <div class="results-header">
+            <h3 class="results-title" id="pv-results-name">Product</h3>
+            <span class="verdict-badge" id="pv-verdict-badge"></span>
+          </div>
+          <!-- Brand reputation inline -->
+          <div class="results-rep-row" id="pv-rep-row" hidden>
+            <span id="pv-rep-dots"></span>
+            <span class="results-rep-row__text" id="pv-rep-text"></span>
+          </div>
+          <div class="results-grid">
+            <div class="stat-card stat-card--highlight">
+              <span class="stat-card__label">Cost per use</span>
+              <span class="stat-card__value" id="pv-stat-per-use"></span>
+            </div>
+            <div class="stat-card stat-card--highlight">
+              <span class="stat-card__label">Monthly cost</span>
+              <span class="stat-card__value" id="pv-stat-monthly"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card__label">Total cost</span>
+              <span class="stat-card__value" id="pv-stat-total"></span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card__label">Lifespan</span>
+              <span class="stat-card__value" id="pv-stat-lifespan"></span>
+            </div>
+          </div>
+          <!-- Comparison block (shown only when alt brand + price provided) -->
+          <div class="comparison-block" id="pv-comparison" hidden>
+            <h4 class="comparison-block__title">Side-by-side over <span id="cmp-period"></span></h4>
+            <div class="comparison-grid">
+              <div class="comparison-col comparison-col--main">
+                <p class="comparison-col__brand"  id="cmp-main-brand"></p>
+                <p class="comparison-col__price"  id="cmp-main-price"></p>
+                <p class="comparison-col__detail" id="cmp-main-detail"></p>
+              </div>
+              <div class="comparison-col comparison-col--alt">
+                <p class="comparison-col__brand"  id="cmp-alt-brand"></p>
+                <p class="comparison-col__price"  id="cmp-alt-price"></p>
+                <p class="comparison-col__detail" id="cmp-alt-detail"></p>
+              </div>
+            </div>
+            <p class="comparison-block__summary" id="cmp-summary"></p>
+          </div>
+          <p class="verdict-text" id="pv-verdict-text"></p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========== SAVED ITEMS ========== -->
+  <section class="saved-section" id="saved">
+    <div class="container">
+      <h2 class="section-title">Saved Calculations</h2>
+      <p class="section-sub">Your saved comparisons live here — even after you refresh</p>
+      <div id="saved-list">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== WISHLIST ========== -->
+  <section class="wishlist-section" id="wishlist">
+    <div class="container">
+      <h2 class="section-title">My Wishlist</h2>
+      <p class="section-sub">Save things you want to buy someday — then run the numbers when you're ready</p>
+
+      <!-- Add-to-wishlist form -->
+      <div class="wishlist-add-card">
+        <form id="wishlist-form" novalidate>
+
+          <!-- URL fetcher -->
+          <div class="url-fetcher">
+            <div class="url-fetcher__row">
+              <div class="field url-fetcher__field">
+                <label for="wishlistUrl">Paste a product link <span class="optional">optional — auto-fills name, price &amp; image</span></label>
+                <input
+                  type="url"
+                  id="wishlistUrl"
+                  placeholder="https://www.ulta.com/p/..."
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+              </div>
+              <button type="button" class="btn btn--secondary url-fetcher__btn" id="btn-fetch-url">
+                <span id="fetch-btn-text">Fetch</span>
+              </button>
+            </div>
+            <p class="url-fetcher__hint" id="fetch-status"></p>
+          </div>
+
+          <div class="url-fetcher__divider"><span>or fill in manually</span></div>
+
+          <!-- Product preview (shown after a successful fetch) -->
+          <div class="product-preview" id="product-preview" hidden>
+            <img id="preview-image" src="" alt="Product image" class="product-preview__img" />
+            <div class="product-preview__info">
+              <p class="product-preview__label">Fetched from link</p>
+              <p class="product-preview__name" id="preview-name"></p>
+            </div>
+            <button type="button" class="product-preview__clear" id="btn-clear-preview" aria-label="Remove preview">✕</button>
+          </div>
+
+          <div class="wishlist-form-fields">
+            <div class="field">
+              <label for="wishlistName">Item name <span class="required">*</span></label>
+              <input
+                type="text"
+                id="wishlistName"
+                placeholder="e.g. Carolina Herrera Good Girl Perfume"
+                autocomplete="off"
+              />
+              <span class="field__error" id="err-wishlistName"></span>
+            </div>
+            <div class="field">
+              <label for="wishlistPrice">Estimated price ($) <span class="optional">optional</span></label>
+              <input
+                type="number"
+                id="wishlistPrice"
+                placeholder="e.g. 140"
+                min="0"
+                step="0.01"
+              />
+            </div>
+            <div class="field wishlist-form-fields__note">
+              <label for="wishlistNote">Note <span class="optional">optional</span></label>
+              <input
+                type="text"
+                id="wishlistNote"
+                placeholder="e.g. Saw it at Sephora, smells amazing"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+          <button type="submit" class="btn btn--primary">Add to Wishlist</button>
+        </form>
+      </div>
+
+      <!-- Wishlist items -->
+      <div id="wishlist-list">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CALENDAR ========== -->
+  <section class="calendar-section" id="calendar">
+    <div class="container">
+      <h2 class="section-title">Event Calendar</h2>
+      <p class="section-sub">Mark your upcoming events and get AI-powered purchase suggestions</p>
+
+      <div class="calendar-container">
+        <!-- Calendar Header -->
+        <div class="calendar-header">
+          <button class="btn btn--ghost" id="prev-month">‹</button>
+          <h3 class="calendar-title" id="calendar-title">Month Year</h3>
+          <button class="btn btn--ghost" id="next-month">›</button>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div class="calendar-grid" id="calendar-grid">
+          <!-- Days of week -->
+          <div class="calendar-day-header">Sun</div>
+          <div class="calendar-day-header">Mon</div>
+          <div class="calendar-day-header">Tue</div>
+          <div class="calendar-day-header">Wed</div>
+          <div class="calendar-day-header">Thu</div>
+          <div class="calendar-day-header">Fri</div>
+          <div class="calendar-day-header">Sat</div>
+          <!-- Calendar days will be populated by JS -->
+        </div>
+
+        <!-- Event Form -->
+        <div class="event-form-card" id="event-form-card" hidden>
+          <h4 id="event-form-title">Add Event</h4>
+          <form id="event-form" novalidate>
+            <div class="field">
+              <label for="event-date">Date <span class="required">*</span></label>
+              <input type="date" id="event-date" required />
+            </div>
+            <div class="field">
+              <label for="event-title">Event Title <span class="required">*</span></label>
+              <input type="text" id="event-title" placeholder="e.g. Birthday Party" required />
+            </div>
+            <div class="field">
+              <label for="event-description">Description <span class="optional">optional</span></label>
+              <textarea id="event-description" placeholder="Describe the event..."></textarea>
+            </div>
+            <div class="field">
+              <label for="event-budget">Budget ($) <span class="optional">optional</span></label>
+              <input type="number" id="event-budget" placeholder="e.g. 200" min="0" step="0.01" />
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn--primary">Save Event</button>
+              <button type="button" class="btn btn--ghost" id="cancel-event">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Event List -->
+        <div class="events-list" id="events-list">
+          <h4>Upcoming Events</h4>
+          <div id="events-container">
+            <!-- Events will be populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Suggestions -->
+      <div class="suggestions-card" id="suggestions-card" hidden>
+        <h3 class="suggestions-title">🤖 AI Purchase Suggestions</h3>
+        <p class="suggestions-subtitle">Based on your upcoming events, here are purchases that might be worth it:</p>
+        <div id="suggestions-content">
+          <!-- Suggestions will be populated by JS -->
+        </div>
+        <button class="btn btn--secondary" id="generate-suggestions">Generate New Suggestions</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== FOOTER ========== -->
+  <footer class="footer">
+    <p>Worth It? — helping you spend smarter 💸</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
