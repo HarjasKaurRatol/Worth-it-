@@ -40,12 +40,8 @@ firebase.initializeApp(FIREBASE_CONFIG);
 const db   = firebase.firestore();
 const auth = firebase.auth();
 
-// Anonymous user ID — set during initApp()
 let _uid = null;
 
-// In-memory caches. initApp() populates these from Firestore on startup.
-// Synchronous load* functions read from here; persist/save functions update
-// the cache first (instant UI) then write to Firestore in the background.
 const _cache = {
   [STORAGE_KEY]:         [],
   [WISHLIST_KEY]:        [],
@@ -591,12 +587,13 @@ Object.keys(fields).forEach(fieldId => {
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────
 
-const wishlistForm    = document.getElementById('wishlist-form');
-const wishlistListEl  = document.getElementById('wishlist-list');
-const wishlistNameEl  = document.getElementById('wishlistName');
-const wishlistPriceEl = document.getElementById('wishlistPrice');
-const wishlistNoteEl  = document.getElementById('wishlistNote');
-const wishlistUrlEl   = document.getElementById('wishlistUrl');
+const wishlistForm        = document.getElementById('wishlist-form');
+const wishlistListEl      = document.getElementById('wishlist-list');
+const wishlistNameEl      = document.getElementById('wishlistName');
+const wishlistPriceEl     = document.getElementById('wishlistPrice');
+const wishlistNoteEl      = document.getElementById('wishlistNote');
+const wishlistCategoryEl  = document.getElementById('wishlistCategory');
+const wishlistUrlEl       = document.getElementById('wishlistUrl');
 const btnFetchUrl     = document.getElementById('btn-fetch-url');
 const fetchBtnText    = document.getElementById('fetch-btn-text');
 const fetchStatus     = document.getElementById('fetch-status');
@@ -935,7 +932,7 @@ function persistWishlist(items) {
 }
 
 /** Add a new item to the wishlist */
-function addWishlistItem(name, price, note, imageUrl, analysisData) {
+function addWishlistItem(name, price, note, imageUrl, analysisData, category) {
   const items = loadWishlist();
   items.unshift({
     id:                       Date.now().toString(),
@@ -943,6 +940,7 @@ function addWishlistItem(name, price, note, imageUrl, analysisData) {
     price:                    price || null,
     note:                     note.trim() || null,
     imageUrl:                 imageUrl || null,
+    category:                 category || null,
     createdAt:                new Date().toISOString(),
     expected_lifespan:        analysisData ? (analysisData.lifespan || null) : null,
     uses_per_month:           analysisData ? (analysisData.usesPerMonth || null) : null,
@@ -1064,6 +1062,10 @@ function renderWishlist() {
       ? `<p class="wishlist-card__note">"${escapeHtml(item.note)}"</p>`
       : '';
 
+    const categoryHtml = item.category
+      ? `<span class="wishlist-card__category">${escapeHtml(item.category)}</span>`
+      : '';
+
     return `
       <div class="wishlist-card" data-id="${item.id}">
         ${imageHtml}
@@ -1071,6 +1073,7 @@ function renderWishlist() {
           <span class="wishlist-card__name">${escapeHtml(item.name)}</span>
           <span class="wishlist-card__date">${formatDate(item.createdAt)}</span>
         </div>
+        ${categoryHtml}
         ${priceHtml}
         ${noteHtml}
         <div class="wishlist-card__actions">
@@ -1098,13 +1101,15 @@ wishlistForm.addEventListener('submit', (e) => {
   errEl.textContent = '';
   wishlistNameEl.classList.remove('input--error');
 
+  const category = wishlistCategoryEl.value || null;
+
   addWishlistItem(name, price, note, pendingImageUrl, {
     lifespan:          parseFloat(wishlistLifespanEl.value) || null,
     usesPerMonth:      parseFloat(wishlistUsesPerMonthEl.value) || null,
     replacesRecurring: wishlistReplacesEl.checked,
     recurringCost:     parseFloat(wishlistRecurringCostEl.value) || null,
     eventTag:          wishlistEventTagEl.value.trim() || null,
-  });
+  }, category);
 
   // Reset the whole form and any fetch state
   wishlistForm.reset();

@@ -951,6 +951,18 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(192,80,74,.12); }
   line-height: 1.45;
 }
 
+.wishlist-card__category {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--clr-accent-pale, #f3eefe);
+  color: var(--clr-accent-dark, #6b3fa0);
+}
+
 .wishlist-card__actions {
   display: flex;
   gap: var(--space-xs);
