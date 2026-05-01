@@ -11,6 +11,22 @@
 </head>
 <body>
 
+  <!-- ========== NAVIGATION ========== -->
+  <nav class="nav" id="nav">
+    <div class="container">
+      <div class="nav__inner">
+        <a href="#top" class="nav__brand">Worth It?</a>
+        <div class="nav__links">
+          <a href="#calculator" class="nav__link">Calculator</a>
+          <a href="#saved" class="nav__link">Saved</a>
+          <a href="#wishlist" class="nav__link">Wishlist</a>
+          <a href="#insights" class="nav__link">Insights</a>
+          <a href="#calendar" class="nav__link">Calendar</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
   <!-- ========== HERO ========== -->
   <section class="hero" id="top">
     <div class="hero__inner">
@@ -25,18 +41,6 @@
       <a href="#calculator" class="btn btn--primary hero__cta">Run the numbers</a>
     </div>
   </section>
-
-  <!-- ========== NAVIGATION ========== -->
-  <nav class="nav" id="nav">
-    <div class="container">
-      <div class="nav__links">
-        <a href="#calculator" class="nav__link">Calculator</a>
-        <a href="#saved" class="nav__link">Saved</a>
-        <a href="#wishlist" class="nav__link">Wishlist</a>
-        <a href="#calendar" class="nav__link">Calendar</a>
-      </div>
-    </div>
-  </nav>
 
   <!-- ========== EXAMPLES ========== -->
   <section class="examples" id="examples">
@@ -382,6 +386,29 @@
             <p class="url-fetcher__hint" id="fetch-status"></p>
           </div>
 
+          <div class="url-fetcher__divider"><span>or search by name</span></div>
+
+          <!-- Name search via SerpAPI -->
+          <div class="url-fetcher">
+            <div class="url-fetcher__row">
+              <div class="field url-fetcher__field">
+                <label for="wishlistSearch">Search for a product <span class="optional">auto-fills name, price &amp; image via Google Shopping</span></label>
+                <input
+                  type="text"
+                  id="wishlistSearch"
+                  placeholder="e.g. Espresso machine, Dyson Airwrap..."
+                  autocomplete="off"
+                />
+              </div>
+              <button type="button" class="btn btn--secondary url-fetcher__btn" id="btn-search-product">
+                <span id="search-btn-text">Search</span>
+              </button>
+            </div>
+            <p class="url-fetcher__hint" id="search-status"></p>
+            <!-- Top results picker (shown when multiple results returned) -->
+            <div class="search-results" id="search-results" hidden></div>
+          </div>
+
           <div class="url-fetcher__divider"><span>or fill in manually</span></div>
 
           <!-- Product preview (shown after a successful fetch) -->
@@ -425,12 +452,57 @@
               />
             </div>
           </div>
+          <details class="wishlist-advanced">
+            <summary class="wishlist-advanced__toggle">
+              Smart analysis details
+              <span class="optional">optional — unlocks Buy / Wait / Skip insights</span>
+            </summary>
+            <div class="wishlist-advanced__body">
+              <div class="field-row">
+                <div class="field">
+                  <label for="wishlistLifespan">Expected lifespan (months)</label>
+                  <input type="number" id="wishlistLifespan" placeholder="e.g. 24" min="1" step="1" />
+                </div>
+                <div class="field">
+                  <label for="wishlistUsesPerMonth">Uses per month</label>
+                  <input type="number" id="wishlistUsesPerMonth" placeholder="e.g. 8" min="0" step="0.5" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="wishlistEventTag">Linked event tag</label>
+                <input type="text" id="wishlistEventTag" placeholder="e.g. graduation, travel" autocomplete="off" />
+                <p class="field__hint">Match the name of a calendar event to boost priority</p>
+              </div>
+              <div class="field">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="wishlistReplacesRecurring" />
+                  This replaces a recurring expense
+                </label>
+              </div>
+              <div class="field" id="wishlistRecurringCostField" hidden>
+                <label for="wishlistRecurringCost">Monthly cost it replaces ($)</label>
+                <input type="number" id="wishlistRecurringCost" placeholder="e.g. 40" min="0" step="0.01" />
+              </div>
+            </div>
+          </details>
+
           <button type="submit" class="btn btn--primary">Add to Wishlist</button>
         </form>
       </div>
 
       <!-- Wishlist items -->
       <div id="wishlist-list">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SMART WISHLIST INSIGHTS ========== -->
+  <section class="insights-section" id="insights">
+    <div class="container">
+      <h2 class="section-title">Smart Wishlist Insights</h2>
+      <p class="section-sub">Buy, wait, or skip — ranked by value, savings, and your upcoming events</p>
+      <div id="insights-content">
         <!-- Populated by JS -->
       </div>
     </div>

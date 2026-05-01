@@ -1,0 +1,115 @@
+.smart-insights {
+  display: grid;
+  gap: 24px;
+}
+
+.smart-insights__header h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.smart-insights__sections {
+  display: grid;
+  gap: 28px;
+}
+
+.smart-insights__section {
+  display: grid;
+  gap: 14px;
+}
+
+.smart-insights__section-title {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.smart-insights__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.smart-insights__card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e8e0d8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.smart-insights__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.smart-insights__item-name {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.smart-insights__badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.smart-insights__badge--buy {
+  color: #245b37;
+  background: #eaf3ed;
+}
+
+.smart-insights__badge--wait {
+  color: #7a5419;
+  background: #fef6e4;
+}
+
+.smart-insights__badge--no {
+  color: #953731;
+  background: #fcecea;
+}
+
+.smart-insights__reason {
+  margin: 0;
+  color: #5f554e;
+  line-height: 1.45;
+}
+
+.smart-insights__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.smart-insights__metrics div {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #faf8f6;
+}
+
+.smart-insights__metrics dt {
+  color: #7d726a;
+  font-size: 0.78rem;
+}
+
+.smart-insights__metrics dd {
+  margin: 0;
+  color: #2c2825;
+  font-weight: 700;
+}
+
+.smart-insights__empty {
+  margin: 0;
+  color: #7d726a;
+}

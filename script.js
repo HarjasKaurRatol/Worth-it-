@@ -557,6 +557,18 @@ const previewImage    = document.getElementById('preview-image');
 const previewName     = document.getElementById('preview-name');
 const btnClearPreview = document.getElementById('btn-clear-preview');
 
+// Smart analysis fields
+const wishlistLifespanEl      = document.getElementById('wishlistLifespan');
+const wishlistUsesPerMonthEl  = document.getElementById('wishlistUsesPerMonth');
+const wishlistEventTagEl      = document.getElementById('wishlistEventTag');
+const wishlistReplacesEl      = document.getElementById('wishlistReplacesRecurring');
+const wishlistRecurringCostEl = document.getElementById('wishlistRecurringCost');
+const wishlistRecurringField  = document.getElementById('wishlistRecurringCostField');
+
+wishlistReplacesEl.addEventListener('change', () => {
+  wishlistRecurringField.hidden = !wishlistReplacesEl.checked;
+});
+
 // Stores the image URL captured during a URL fetch so it can be saved with the item
 let pendingImageUrl = null;
 
@@ -751,6 +763,120 @@ btnClearPreview.addEventListener('click', () => {
   fetchStatus.className = 'url-fetcher__hint';
 });
 
+// ─── Product name search (SerpAPI) ────────────────────────────────────────────
+
+const btnSearchProduct  = document.getElementById('btn-search-product');
+const searchBtnText     = document.getElementById('search-btn-text');
+const searchStatus      = document.getElementById('search-status');
+const searchResultsEl   = document.getElementById('search-results');
+const wishlistSearchEl  = document.getElementById('wishlistSearch');
+
+function setSearchLoading(loading) {
+  if (loading) {
+    searchBtnText.innerHTML = '<span class="spinner"></span>';
+    btnSearchProduct.disabled = true;
+  } else {
+    searchBtnText.textContent = 'Search';
+    btnSearchProduct.disabled = false;
+  }
+}
+
+function applySearchResult(result) {
+  if (result.name)  wishlistNameEl.value  = result.name;
+  if (result.price) wishlistPriceEl.value = result.price;
+  pendingImageUrl = result.imageUrl || null;
+  if (result.name || result.imageUrl) showProductPreview(result.name, result.imageUrl);
+}
+
+function renderSearchResults(results) {
+  if (!results || results.length <= 1) {
+    searchResultsEl.hidden = true;
+    return;
+  }
+  searchResultsEl.hidden = false;
+  searchResultsEl.innerHTML = results.map((r, i) => `
+    <button type="button" class="search-result-item" data-index="${i}">
+      ${r.imageUrl ? `<img src="${escapeHtml(r.imageUrl)}" alt="" class="search-result-item__img" />` : ''}
+      <span class="search-result-item__text">
+        <span class="search-result-item__name">${escapeHtml(r.name || 'Unknown')}</span>
+        ${r.price != null ? `<span class="search-result-item__price">${formatMoney(r.price)}</span>` : ''}
+      </span>
+    </button>
+  `).join('');
+
+  searchResultsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-index]');
+    if (!btn) return;
+    applySearchResult(results[Number(btn.dataset.index)]);
+    searchResultsEl.hidden = true;
+    searchStatus.textContent = 'Applied! Fill in any missing details below.';
+    searchStatus.className = 'url-fetcher__hint url-fetcher__hint--ok';
+  }, { once: true });
+}
+
+btnSearchProduct.addEventListener('click', async () => {
+  const query = wishlistSearchEl.value.trim();
+  if (!query) {
+    searchStatus.textContent = 'Enter a product name to search.';
+    searchStatus.className = 'url-fetcher__hint url-fetcher__hint--err';
+    return;
+  }
+
+  setSearchLoading(true);
+  searchStatus.textContent = 'Searching Google Shopping…';
+  searchStatus.className = 'url-fetcher__hint';
+  searchResultsEl.hidden = true;
+  clearProductPreview();
+
+  try {
+    const res = await fetch(`/api/search-product?q=${encodeURIComponent(query)}`, {
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (res.status === 404) {
+      searchStatus.innerHTML =
+        'Search requires the site to be deployed on Vercel with a <strong>SERP_API_KEY</strong> environment variable set.';
+      searchStatus.className = 'url-fetcher__hint url-fetcher__hint--err';
+      return;
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Server returned ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    if (!data.name && !data.price) {
+      searchStatus.textContent = 'No results found. Try a different search or fill in manually.';
+      searchStatus.className = 'url-fetcher__hint url-fetcher__hint--err';
+      return;
+    }
+
+    // Auto-apply the top result
+    applySearchResult(data);
+
+    // Show alternate picks if multiple results came back
+    if (data.allResults && data.allResults.length > 1) {
+      renderSearchResults(data.allResults);
+      searchStatus.textContent = 'Top result applied — or pick a different one below.';
+    } else {
+      searchStatus.textContent = 'Found it! Fill in any missing details below.';
+    }
+    searchStatus.className = 'url-fetcher__hint url-fetcher__hint--ok';
+
+  } catch (err) {
+    searchStatus.textContent = `Search failed: ${err.message}`;
+    searchStatus.className = 'url-fetcher__hint url-fetcher__hint--err';
+  } finally {
+    setSearchLoading(false);
+  }
+});
+
+wishlistSearchEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); btnSearchProduct.click(); }
+});
+
 /** Load wishlist entries from localStorage */
 function loadWishlist() {
   try {
@@ -766,24 +892,31 @@ function persistWishlist(items) {
 }
 
 /** Add a new item to the wishlist */
-function addWishlistItem(name, price, note, imageUrl) {
+function addWishlistItem(name, price, note, imageUrl, analysisData) {
   const items = loadWishlist();
   items.unshift({
-    id:        Date.now().toString(),
-    name:      name.trim(),
-    price:     price || null,
-    note:      note.trim() || null,
-    imageUrl:  imageUrl || null,
-    createdAt: new Date().toISOString(),
+    id:                       Date.now().toString(),
+    name:                     name.trim(),
+    price:                    price || null,
+    note:                     note.trim() || null,
+    imageUrl:                 imageUrl || null,
+    createdAt:                new Date().toISOString(),
+    expected_lifespan:        analysisData ? (analysisData.lifespan || null) : null,
+    uses_per_month:           analysisData ? (analysisData.usesPerMonth || null) : null,
+    replaces_recurring_cost:  analysisData ? analysisData.replacesRecurring : false,
+    recurring_cost_per_month: analysisData ? (analysisData.recurringCost || null) : null,
+    event_tag:                analysisData ? (analysisData.eventTag || null) : null,
   });
   persistWishlist(items);
   renderWishlist();
+  renderSmartInsights();
 }
 
 /** Delete a wishlist item by id */
 function deleteWishlistItem(id) {
   persistWishlist(loadWishlist().filter(item => item.id !== id));
   renderWishlist();
+  renderSmartInsights();
 }
 
 /** Pre-fill the calculator with this wishlist item and scroll to it */
@@ -868,10 +1001,17 @@ wishlistForm.addEventListener('submit', (e) => {
   errEl.textContent = '';
   wishlistNameEl.classList.remove('input--error');
 
-  addWishlistItem(name, price, note, pendingImageUrl);
+  addWishlistItem(name, price, note, pendingImageUrl, {
+    lifespan:          parseFloat(wishlistLifespanEl.value) || null,
+    usesPerMonth:      parseFloat(wishlistUsesPerMonthEl.value) || null,
+    replacesRecurring: wishlistReplacesEl.checked,
+    recurringCost:     parseFloat(wishlistRecurringCostEl.value) || null,
+    eventTag:          wishlistEventTagEl.value.trim() || null,
+  });
 
   // Reset the whole form and any fetch state
   wishlistForm.reset();
+  wishlistRecurringField.hidden = true;
   clearProductPreview();
   fetchStatus.textContent = '';
   fetchStatus.className = 'url-fetcher__hint';
@@ -891,6 +1031,179 @@ wishlistListEl.addEventListener('click', (e) => {
   if (waction === 'delete')    deleteWishlistItem(id);
   if (waction === 'calculate') calculateWishlistItem(id);
 });
+
+// ─── Smart Wishlist Insights ──────────────────────────────────────────────────
+
+const _SI_WINDOW = 30; // days
+
+function _siNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function _siDaysUntil(dateStr, now) {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.ceil((d.getTime() - now.getTime()) / 86400000);
+}
+
+function _siEventMatch(item, events, now) {
+  const tag = String(item.event_tag || '').trim().toLowerCase();
+  if (!tag) return null;
+  return events.find(ev => {
+    const name = String(ev.title || '').trim().toLowerCase();
+    const days = _siDaysUntil(ev.date, now);
+    return (name === tag || name.includes(tag) || tag.includes(name)) &&
+      days !== null && days >= 0 && days <= _SI_WINDOW;
+  }) || null;
+}
+
+function _siMetrics(item) {
+  const price   = _siNum(item.price);
+  const upm     = _siNum(item.uses_per_month);
+  const life    = _siNum(item.expected_lifespan);
+  const rec     = _siNum(item.recurring_cost_per_month);
+  const replaces = item.replaces_recurring_cost === true;
+
+  const cpu = price && upm && life ? price / (upm * life) : null;
+  const pb  = price && replaces && rec ? price / rec : null;
+  return { price, upm, life, cpu, pb };
+}
+
+function _siScore(cpu, pb, upm, hasEvent) {
+  let s = 0;
+  if (cpu !== null) {
+    if (cpu <= 1) s += 30; else if (cpu <= 3) s += 22;
+    else if (cpu <= 7) s += 12; else if (cpu <= 12) s += 5; else s -= 15;
+  }
+  if (pb !== null) {
+    if (pb < 3) s += 30; else if (pb < 6) s += 24;
+    else if (pb <= 12) s += 14; else if (pb <= 18) s += 6; else s -= 10;
+  }
+  if (upm !== null) {
+    if (upm >= 20) s += 20; else if (upm >= 8) s += 16;
+    else if (upm >= 4) s += 10; else if (upm >= 2) s += 4; else s -= 20;
+  }
+  if (hasEvent) s += 25;
+  return s;
+}
+
+function _siDecision(score, pb, upm, cpu, eventSoon) {
+  if (score >= 58 || (pb !== null && pb < 6) || eventSoon) return 'Buy Now';
+  if ((upm !== null && upm < 2) || (cpu !== null && cpu > 12) || score < 18) return 'Not Worth It';
+  return 'Wait';
+}
+
+function _siReason(decision, m, eventMatch) {
+  const $$ = v => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+  const parts = [];
+  if (m.pb !== null && m.pb < 6) parts.push(`pays for itself in ${Math.ceil(m.pb)} months`);
+  if (m.cpu !== null) parts.push(`${$$(Math.round(m.cpu * 100) / 100)} per use`);
+  if (m.upm !== null && m.upm >= 8) parts.push('high expected usage');
+  if (eventMatch) parts.push(`relevant for "${eventMatch.title}" within ${_SI_WINDOW} days`);
+
+  if (decision === 'Not Worth It') {
+    if (m.upm !== null && m.upm < 2) return 'Low expected usage makes the value hard to justify.';
+    if (m.cpu !== null && m.cpu > 12) return 'Cost per use is very high compared with expected use.';
+    return 'No clear savings, urgency, or usage signal from the saved wishlist data.';
+  }
+  if (decision === 'Wait') {
+    return parts.length
+      ? `${parts.slice(0, 2).join(' and ')}, but no urgent reason to buy now.`
+      : 'No strong urgency yet. Revisit when usage, lifespan, or savings are clearer.';
+  }
+  return parts.slice(0, 3).join(', ') || 'Strong value signal from saved wishlist data.';
+}
+
+function analyzeWishlist(wishlistItems, calendarEvents) {
+  const now = new Date();
+  return wishlistItems.map(item => {
+    const m    = _siMetrics(item);
+    const ev   = _siEventMatch(item, calendarEvents, now);
+    const score = _siScore(m.cpu, m.pb, m.upm, Boolean(ev));
+    const decision = _siDecision(score, m.pb, m.upm, m.cpu, Boolean(ev));
+    return {
+      id: item.id,
+      name: item.name,
+      decision,
+      reason: _siReason(decision, m, ev),
+      metrics: {
+        cost_per_use:   m.cpu === null ? null : Math.round(m.cpu * 100) / 100,
+        payback_months: m.pb  === null ? null : Math.round(m.pb  * 10)  / 10,
+      },
+    };
+  });
+}
+
+function renderSmartInsights() {
+  const el = document.getElementById('insights-content');
+  if (!el) return;
+
+  const wishlistItems  = loadWishlist();
+  const calendarEvents = loadCalendarEvents();
+
+  if (wishlistItems.length === 0) {
+    el.innerHTML = '<p class="insights-hint">Add items to your wishlist to see Smart Insights.</p>';
+    return;
+  }
+
+  const hasData = wishlistItems.some(item =>
+    item.uses_per_month || item.expected_lifespan ||
+    item.replaces_recurring_cost || item.event_tag
+  );
+
+  if (!hasData) {
+    el.innerHTML = `<p class="insights-hint">Expand <strong>Smart analysis details</strong> on any wishlist item to unlock Buy / Wait / Skip insights.</p>`;
+    return;
+  }
+
+  const insights = analyzeWishlist(wishlistItems, calendarEvents);
+  const groups = {
+    'Buy Now':      insights.filter(i => i.decision === 'Buy Now'),
+    'Wait':         insights.filter(i => i.decision === 'Wait'),
+    'Not Worth It': insights.filter(i => i.decision === 'Not Worth It'),
+  };
+
+  const $$ = v => v === null
+    ? 'N/A'
+    : v.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+
+  const badgeClass = {
+    'Buy Now':      'insight-badge--buy',
+    'Wait':         'insight-badge--wait',
+    'Not Worth It': 'insight-badge--no',
+  };
+
+  el.innerHTML = ['Buy Now', 'Wait', 'Not Worth It'].map(decision => {
+    const items = groups[decision];
+    if (items.length === 0) return '';
+    return `
+      <section class="insights-group">
+        <h3 class="insights-group__title">${decision}</h3>
+        <div class="insights-grid">
+          ${items.map(item => `
+            <article class="insight-card">
+              <div class="insight-card__header">
+                <h4 class="insight-card__name">${escapeHtml(item.name)}</h4>
+                <span class="insight-badge ${badgeClass[item.decision]}">${item.decision}</span>
+              </div>
+              <p class="insight-card__reason">${escapeHtml(item.reason)}</p>
+              <dl class="insight-metrics">
+                <div>
+                  <dt>Cost per use</dt>
+                  <dd>${$$(item.metrics.cost_per_use)}</dd>
+                </div>
+                <div>
+                  <dt>Payback</dt>
+                  <dd>${item.metrics.payback_months === null ? 'N/A' : item.metrics.payback_months + ' mo'}</dd>
+                </div>
+              </dl>
+            </article>
+          `).join('')}
+        </div>
+      </section>`;
+  }).join('');
+}
 
 // ─── Calculator mode tabs ────────────────────────────────────────────────────
 
@@ -1349,6 +1662,7 @@ function savePvCalculation(data, calc) {
 /** Kick off on page load */
 renderSaved();
 renderWishlist();
+renderSmartInsights();
 
 // ─── Calendar ──────────────────────────────────────────────────────────────────
 
