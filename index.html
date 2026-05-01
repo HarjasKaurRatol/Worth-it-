@@ -417,6 +417,26 @@
             <p class="url-fetcher__hint" id="fetch-status"></p>
           </div>
 
+          <!-- Product name search -->
+          <div class="url-fetcher">
+            <div class="url-fetcher__row">
+              <div class="field url-fetcher__field">
+                <label for="wishlistSearch">Search by product name <span class="optional">optional — finds price &amp; image</span></label>
+                <input
+                  type="text"
+                  id="wishlistSearch"
+                  placeholder="e.g. Dyson Airwrap, Lululemon leggings"
+                  autocomplete="off"
+                />
+              </div>
+              <button type="button" class="btn btn--secondary url-fetcher__btn" id="btn-search-product">
+                <span id="search-btn-text">Search</span>
+              </button>
+            </div>
+            <p class="url-fetcher__hint" id="search-status"></p>
+            <div id="search-results" hidden></div>
+          </div>
+
           <div class="url-fetcher__divider"><span>or fill in manually</span></div>
 
           <!-- Product preview (shown after a successful fetch) -->
