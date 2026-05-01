@@ -6,10 +6,64 @@
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'worthit_calculations';
+const STORAGE_KEY         = 'worthit_calculations';
+const WISHLIST_KEY        = 'worthit_wishlist';
+const CALENDAR_EVENTS_KEY = 'worthit_calendar_events';
 
 /** Threshold: if user says they'll use ≥ this many times/month, it's "high usage" */
 const HIGH_USAGE_THRESHOLD = 4;
+
+// ─── Firebase storage ─────────────────────────────────────────────────────────
+//
+// Setup steps:
+//  1. Go to https://console.firebase.google.com → create a new project.
+//  2. Add a Web app → copy the config object into FIREBASE_CONFIG below.
+//  3. In the console, enable:
+//       • Firestore Database (start in production mode, any region)
+//       • Authentication → Sign-in method → Anonymous
+//  4. In Firestore → Rules, replace the default with:
+//
+    
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyCtLtsEJ9jxwpoGJywrhyFHEHw6L8woeQI",
+  authDomain:        "newapp-998b9.firebaseapp.com",
+  projectId:         "newapp-998b9",
+  storageBucket:     "newapp-998b9.firebasestorage.app",
+  messagingSenderId: "464304439384",
+  appId:             "1:464304439384:web:26f25879653ff4236b4a2d",
+};
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const db   = firebase.firestore();
+const auth = firebase.auth();
+
+// Anonymous user ID — set during initApp()
+let _uid = null;
+
+// In-memory caches. initApp() populates these from Firestore on startup.
+// Synchronous load* functions read from here; persist/save functions update
+// the cache first (instant UI) then write to Firestore in the background.
+const _cache = {
+  [STORAGE_KEY]:         [],
+  [WISHLIST_KEY]:        [],
+  [CALENDAR_EVENTS_KEY]: [],
+};
+
+function _fsSave(key, value) {
+  if (!_uid) return;
+  db.collection('users').doc(_uid).collection('data').doc(key)
+    .set({ v: value })
+    .catch(err => console.warn('[Firestore] write error:', err));
+}
+
+async function _fsLoad(key) {
+  if (!_uid) return null;
+  const snap = await db.collection('users').doc(_uid).collection('data').doc(key).get();
+  return snap.exists ? snap.data().v : null;
+}
 
 // ─── Example data ────────────────────────────────────────────────────────────
 
@@ -318,23 +372,18 @@ function hideResults() {
   resultsSection.hidden = true;
 }
 
-// ─── localStorage ─────────────────────────────────────────────────────────────
+// ─── Saved calculations storage ───────────────────────────────────────────────
 
-/** Load all saved entries from localStorage (returns array) */
 function loadSaved() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch {
-    return [];
-  }
+  return _cache[STORAGE_KEY];
 }
 
-/** Persist the full array to localStorage */
 function persistSaved(entries) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  _cache[STORAGE_KEY] = entries;
+  _fsSave(STORAGE_KEY, entries);
 }
 
-/** Save the current calculation result to localStorage */
+/** Save the current calculation result */
 function saveCalculation(data, calc) {
   const entries = loadSaved();
   const entry = {
@@ -542,7 +591,6 @@ Object.keys(fields).forEach(fieldId => {
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────
 
-const WISHLIST_KEY    = 'worthit_wishlist';
 const wishlistForm    = document.getElementById('wishlist-form');
 const wishlistListEl  = document.getElementById('wishlist-list');
 const wishlistNameEl  = document.getElementById('wishlistName');
@@ -877,18 +925,13 @@ wishlistSearchEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); btnSearchProduct.click(); }
 });
 
-/** Load wishlist entries from localStorage */
 function loadWishlist() {
-  try {
-    return JSON.parse(localStorage.getItem(WISHLIST_KEY)) || [];
-  } catch {
-    return [];
-  }
+  return _cache[WISHLIST_KEY];
 }
 
-/** Persist wishlist array to localStorage */
 function persistWishlist(items) {
-  localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
+  _cache[WISHLIST_KEY] = items;
+  _fsSave(WISHLIST_KEY, items);
 }
 
 /** Add a new item to the wishlist */
@@ -1867,16 +1910,7 @@ function savePvCalculation(data, calc) {
   renderSaved();
 }
 
-// ─── Init ────────────────────────────────────────────────────────────────────
-
-/** Kick off on page load */
-renderSaved();
-renderWishlist();
-renderSmartInsights();
-
 // ─── Calendar ──────────────────────────────────────────────────────────────────
-
-const CALENDAR_EVENTS_KEY = 'worthit_calendar_events';
 
 // ─── Calendar: DOM references ──────────────────────────────────────────────────
 
@@ -1905,15 +1939,12 @@ let editingEventId = null;
 // ─── Calendar: event storage ───────────────────────────────────────────────────
 
 function loadCalendarEvents() {
-  try {
-    return JSON.parse(localStorage.getItem(CALENDAR_EVENTS_KEY)) || [];
-  } catch {
-    return [];
-  }
+  return _cache[CALENDAR_EVENTS_KEY];
 }
 
 function saveCalendarEvents(events) {
-  localStorage.setItem(CALENDAR_EVENTS_KEY, JSON.stringify(events));
+  _cache[CALENDAR_EVENTS_KEY] = events;
+  _fsSave(CALENDAR_EVENTS_KEY, events);
 }
 
 // ─── Calendar: rendering ───────────────────────────────────────────────────────
@@ -2224,10 +2255,34 @@ eventsContainer.addEventListener('click', (e) => {
 
 generateSuggestionsBtn.addEventListener('click', generatePurchaseSuggestions);
 
-// ─── Calendar: init ───────────────────────────────────────────────────────────
+// ─── App init ─────────────────────────────────────────────────────────────────
 
-renderCalendar();
-renderEventsList();
+async function initApp() {
+  try {
+    const cred = await auth.signInAnonymously();
+    _uid = cred.user.uid;
+
+    const [saved, wishlist, events] = await Promise.all([
+      _fsLoad(STORAGE_KEY),
+      _fsLoad(WISHLIST_KEY),
+      _fsLoad(CALENDAR_EVENTS_KEY),
+    ]);
+
+    if (saved)    _cache[STORAGE_KEY]         = saved;
+    if (wishlist) _cache[WISHLIST_KEY]         = wishlist;
+    if (events)   _cache[CALENDAR_EVENTS_KEY]  = events;
+  } catch (err) {
+    console.warn('[Firebase] init failed — running with empty data:', err.message);
+  }
+
+  renderSaved();
+  renderWishlist();
+  renderSmartInsights();
+  renderCalendar();
+  renderEventsList();
+}
+
+initApp();
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
