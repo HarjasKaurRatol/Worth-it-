@@ -1383,8 +1383,67 @@ function showRepCard(brand, cardEl, dotsEl, scoreEl, labelEl, noteEl, lifespanEl
   return info;
 }
 
-// Main brand input → also auto-fill lifespan
+// ─── Product Value: brand / name auto-detect helpers ─────────────────────────
+
+/** Scan BRANDS keys against a product name string; returns the best-matching key or null */
+function detectBrandFromName(name) {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  let bestKey = null, bestLen = 0;
+  for (const key of Object.keys(BRANDS)) {
+    if (lower.includes(key) && key.length > bestLen) {
+      bestKey = key;
+      bestLen = key.length;
+    }
+  }
+  return bestKey;
+}
+
+/** Apply a detected brand key to the brand field + lifespan + rep card */
+function applyDetectedBrand(key, markAsAutoDetected) {
+  const info = BRANDS[key];
+  if (!info) return;
+  const displayName = key.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  pvFields.brand.value = displayName;
+  document.getElementById('pv-brand-badge').hidden = !markAsAutoDetected;
+
+  showRepCard(
+    pvFields.brand.value,
+    repCard,
+    document.getElementById('rep-dots'),
+    document.getElementById('rep-score'),
+    document.getElementById('rep-label'),
+    document.getElementById('rep-note'),
+    document.getElementById('rep-lifespan'),
+  );
+
+  if (!pvFields.lifespan.value) {
+    pvFields.lifespan.value = info.lifespanMonths;
+    document.getElementById('pv-lifespan-hint').textContent =
+      `Auto-filled from ${displayName} reputation data`;
+    document.getElementById('pv-lifespan-badge').hidden = false;
+  }
+}
+
+// Product name input → auto-detect brand as user types
+pvFields.name.addEventListener('input', () => {
+  document.getElementById('err-pv-name').textContent = '';
+  pvFields.name.classList.remove('input--error');
+
+  const key = detectBrandFromName(pvFields.name.value);
+  if (key && !pvFields.brand._manuallyEdited) {
+    applyDetectedBrand(key, true);
+    const statusEl = document.getElementById('pv-autofill-status');
+    statusEl.textContent = `Brand detected: ${pvFields.brand.value}. Lifespan auto-filled. Just enter your usage below.`;
+    statusEl.className = 'field__hint pv-autofill-status--ok';
+  }
+});
+
+// Mark brand field as manually edited so auto-detect doesn't override it
 pvFields.brand.addEventListener('input', () => {
+  pvFields.brand._manuallyEdited = true;
+  document.getElementById('pv-brand-badge').hidden = true;
+
   const info = showRepCard(
     pvFields.brand.value,
     repCard,
@@ -1394,11 +1453,11 @@ pvFields.brand.addEventListener('input', () => {
     document.getElementById('rep-note'),
     document.getElementById('rep-lifespan'),
   );
-  // Auto-fill lifespan if field is empty
   if (info && !pvFields.lifespan.value) {
     pvFields.lifespan.value = info.lifespanMonths;
     document.getElementById('pv-lifespan-hint').textContent =
       `Auto-filled from ${pvFields.brand.value.trim()} reputation data`;
+    document.getElementById('pv-lifespan-badge').hidden = false;
   }
   document.getElementById('err-pv-brand').textContent = '';
   pvFields.brand.classList.remove('input--error');
@@ -1414,6 +1473,90 @@ pvFields.altBrand.addEventListener('input', () => {
     document.getElementById('rep-alt-label'),
     null, null,
   );
+});
+
+// ─── Product Value: AI Fill button ────────────────────────────────────────────
+
+const pvAutofillStatusEl  = document.getElementById('pv-autofill-status');
+const pvAutofillBtnText   = document.getElementById('pv-autofill-btn-text');
+const pvAutofillBtn       = document.getElementById('pv-btn-autofill');
+
+function setPvAutofillLoading(loading) {
+  if (loading) {
+    pvAutofillBtnText.innerHTML = '<span class="spinner"></span>';
+    pvAutofillBtn.disabled = true;
+  } else {
+    pvAutofillBtnText.textContent = '✨ AI Fill';
+    pvAutofillBtn.disabled = false;
+  }
+}
+
+pvAutofillBtn.addEventListener('click', async () => {
+  const query = pvFields.name.value.trim();
+  if (!query) {
+    pvAutofillStatusEl.textContent = 'Enter a product name first.';
+    pvAutofillStatusEl.className = 'field__hint pv-autofill-status--err';
+    return;
+  }
+
+  setPvAutofillLoading(true);
+  pvAutofillStatusEl.textContent = 'Searching for product…';
+  pvAutofillStatusEl.className = 'field__hint';
+
+  try {
+    const res = await fetch(`/api/search-product?q=${encodeURIComponent(query)}`, {
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (res.status === 404) {
+      pvAutofillStatusEl.innerHTML = 'AI Fill needs the site deployed on Vercel. Enter price manually.';
+      pvAutofillStatusEl.className = 'field__hint pv-autofill-status--err';
+      return;
+    }
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+
+    const data = await res.json();
+    const filled = [];
+
+    if (data.price) {
+      pvFields.price.value = data.price;
+      document.getElementById('pv-price-badge').hidden = false;
+      filled.push('price');
+    }
+
+    // Auto-detect brand from returned product name if brand not yet set
+    const nameToCheck = data.name || query;
+    if (!pvFields.brand._manuallyEdited) {
+      const key = detectBrandFromName(nameToCheck);
+      if (key) { applyDetectedBrand(key, true); filled.push('brand', 'lifespan'); }
+    }
+
+    pvAutofillStatusEl.textContent = filled.length
+      ? `Auto-filled: ${filled.join(', ')}. Just enter your usage below.`
+      : 'No results found — fill in brand and price manually.';
+    pvAutofillStatusEl.className = filled.length
+      ? 'field__hint pv-autofill-status--ok'
+      : 'field__hint pv-autofill-status--err';
+
+  } catch {
+    pvAutofillStatusEl.textContent = 'Could not fetch product info — enter price manually.';
+    pvAutofillStatusEl.className = 'field__hint pv-autofill-status--err';
+  } finally {
+    setPvAutofillLoading(false);
+  }
+});
+
+// ─── Product Value: week / month usage toggle ─────────────────────────────────
+
+let pvUsagePeriod = 'week'; // 'week' | 'month'
+
+document.querySelector('.pv-period-toggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('.pv-period-btn');
+  if (!btn) return;
+  pvUsagePeriod = btn.dataset.period;
+  document.querySelectorAll('.pv-period-btn').forEach(b => {
+    b.classList.toggle('pv-period-btn--active', b.dataset.period === pvUsagePeriod);
+  });
 });
 
 // ─── Product Value: calculation ───────────────────────────────────────────────
@@ -1570,7 +1713,7 @@ function validatePvForm(data) {
   [['pv-name', data.name, 'Please enter a product name.'],
    ['pv-price', data.price > 0, 'Enter a price greater than $0.'],
    ['pv-brand', data.brand, 'Please enter a brand name.'],
-   ['pv-uses', data.uses > 0, 'Enter how many times per month you\'ll use it.'],
+   ['pv-uses', data.uses > 0, `Enter how many times per ${pvUsagePeriod} you'll use it.`],
    ['pv-lifespan', data.lifespan > 0, 'Enter an expected lifespan.'],
   ].forEach(([id, ok, msg]) => {
     const errEl   = document.getElementById(`err-${id}`);
@@ -1594,14 +1737,17 @@ let lastPvData = null;
 
 pvForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  const rawUses = parseFloat(pvFields.uses.value) || 0;
+  const usesPerMonth = pvUsagePeriod === 'week' ? rawUses * (52 / 12) : rawUses;
   const data = {
-    name:     pvFields.name.value.trim(),
-    price:    parseFloat(pvFields.price.value) || 0,
-    brand:    pvFields.brand.value.trim(),
-    uses:     parseFloat(pvFields.uses.value) || 0,
-    lifespan: parseFloat(pvFields.lifespan.value) || 0,
-    altBrand: pvFields.altBrand.value.trim(),
-    altPrice: parseFloat(pvFields.altPrice.value) || 0,
+    name:          pvFields.name.value.trim(),
+    price:         parseFloat(pvFields.price.value) || 0,
+    brand:         pvFields.brand.value.trim(),
+    uses:          usesPerMonth,
+    usageDisplay:  `${rawUses} × per ${pvUsagePeriod}`,
+    lifespan:      parseFloat(pvFields.lifespan.value) || 0,
+    altBrand:      pvFields.altBrand.value.trim(),
+    altPrice:      parseFloat(pvFields.altPrice.value) || 0,
   };
   if (!validatePvForm(data)) return;
 
@@ -1627,7 +1773,17 @@ document.getElementById('pv-btn-clear').addEventListener('click', () => {
   pvResults.hidden  = true;
   lastPvCalc = null;
   lastPvData = null;
-  document.getElementById('pv-lifespan-hint').textContent = 'Auto-filled when you enter a known brand';
+  pvFields.brand._manuallyEdited = false;
+  pvUsagePeriod = 'week';
+  document.querySelectorAll('.pv-period-btn').forEach(b => {
+    b.classList.toggle('pv-period-btn--active', b.dataset.period === 'week');
+  });
+  document.getElementById('pv-brand-badge').hidden   = true;
+  document.getElementById('pv-price-badge').hidden   = true;
+  document.getElementById('pv-lifespan-badge').hidden = true;
+  document.getElementById('pv-lifespan-hint').textContent = 'Auto-filled when brand is detected';
+  pvAutofillStatusEl.textContent = 'Type a product name — brand & lifespan auto-detect as you type. Hit AI Fill to look up the price.';
+  pvAutofillStatusEl.className = 'field__hint';
 });
 
 // ─── Saving product-value results ─────────────────────────────────────────────

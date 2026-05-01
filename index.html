@@ -207,54 +207,85 @@
           <form id="pv-form" novalidate>
 
             <fieldset class="form-group">
-              <legend class="form-group__legend">The product</legend>
-              <div class="field-row">
-                <div class="field">
-                  <label for="pv-name">Product name <span class="required">*</span></label>
-                  <input type="text" id="pv-name" placeholder="e.g. Straight-leg jeans" autocomplete="off" />
-                  <span class="field__error" id="err-pv-name"></span>
-                </div>
-                <div class="field">
-                  <label for="pv-price">Price ($) <span class="required">*</span></label>
-                  <input type="number" id="pv-price" placeholder="e.g. 55" min="0" step="0.01" />
-                  <span class="field__error" id="err-pv-price"></span>
-                </div>
-              </div>
-              <!-- Brand lookup -->
+              <legend class="form-group__legend">About the product</legend>
+
+              <!-- Product name + AI Fill button -->
               <div class="field">
-                <label for="pv-brand">Brand <span class="required">*</span></label>
-                <input type="text" id="pv-brand" placeholder="e.g. Old Navy" autocomplete="off" />
-                <span class="field__error" id="err-pv-brand"></span>
-                <div class="reputation-card" id="reputation-card" hidden>
-                  <div class="reputation-card__header">
-                    <div class="reputation-score">
-                      <span id="rep-dots"></span>
-                      <span class="reputation-score__num" id="rep-score"></span>
+                <label for="pv-name">Product name <span class="required">*</span></label>
+                <div class="pv-name-row">
+                  <input type="text" id="pv-name" placeholder="e.g. Lululemon Align Leggings" autocomplete="off" />
+                  <button type="button" class="btn btn--secondary pv-autofill-btn" id="pv-btn-autofill">
+                    <span id="pv-autofill-btn-text">✨ AI Fill</span>
+                  </button>
+                </div>
+                <p class="field__hint" id="pv-autofill-status">Type a product name — brand &amp; lifespan auto-detect as you type. Hit <strong>AI Fill</strong> to look up the price.</p>
+                <span class="field__error" id="err-pv-name"></span>
+              </div>
+
+              <div class="field-row">
+                <!-- Brand (auto-detected from name) -->
+                <div class="field">
+                  <label for="pv-brand">
+                    Brand <span class="required">*</span>
+                    <span class="ai-badge" id="pv-brand-badge" hidden>✨ auto-detected</span>
+                  </label>
+                  <input type="text" id="pv-brand" placeholder="Auto-detected · or type brand" autocomplete="off" />
+                  <span class="field__error" id="err-pv-brand"></span>
+                  <div class="reputation-card" id="reputation-card" hidden>
+                    <div class="reputation-card__header">
+                      <div class="reputation-score">
+                        <span id="rep-dots"></span>
+                        <span class="reputation-score__num" id="rep-score"></span>
+                      </div>
+                      <div>
+                        <p class="reputation-card__label" id="rep-label"></p>
+                        <p class="reputation-card__note"  id="rep-note"></p>
+                      </div>
                     </div>
-                    <div>
-                      <p class="reputation-card__label" id="rep-label"></p>
-                      <p class="reputation-card__note"  id="rep-note"></p>
-                    </div>
+                    <p class="reputation-card__lifespan" id="rep-lifespan"></p>
                   </div>
-                  <p class="reputation-card__lifespan" id="rep-lifespan"></p>
+                </div>
+
+                <!-- Price (auto-filled via AI Fill) -->
+                <div class="field">
+                  <label for="pv-price">
+                    Price ($) <span class="required">*</span>
+                    <span class="ai-badge" id="pv-price-badge" hidden>✨ auto-filled</span>
+                  </label>
+                  <input type="number" id="pv-price" placeholder="Auto-filled · or enter price" min="0" step="0.01" />
+                  <span class="field__error" id="err-pv-price"></span>
                 </div>
               </div>
             </fieldset>
 
+            <!-- The ONLY field the user needs to fill -->
+            <fieldset class="form-group pv-usage-fieldset">
+              <legend class="form-group__legend">Your usage <span class="required">*</span></legend>
+              <p class="form-group__desc">This is all you need to fill in — brand, price &amp; lifespan are handled above.</p>
+              <div class="field">
+                <label for="pv-uses">How often will you use it?</label>
+                <div class="pv-usage-row">
+                  <input type="number" id="pv-uses" placeholder="e.g. 3" min="0" step="0.5" />
+                  <div class="pv-period-toggle" role="group" aria-label="Usage period">
+                    <button type="button" class="pv-period-btn pv-period-btn--active" data-period="week">per week</button>
+                    <button type="button" class="pv-period-btn" data-period="month">per month</button>
+                  </div>
+                </div>
+                <span class="field__error" id="err-pv-uses"></span>
+              </div>
+            </fieldset>
+
+            <!-- Lifespan (auto-filled from brand, editable) -->
             <fieldset class="form-group">
-              <legend class="form-group__legend">Your usage</legend>
-              <div class="field-row">
-                <div class="field">
-                  <label for="pv-uses">Uses per month <span class="required">*</span></label>
-                  <input type="number" id="pv-uses" placeholder="e.g. 12" min="0" step="0.5" />
-                  <span class="field__error" id="err-pv-uses"></span>
-                </div>
-                <div class="field">
-                  <label for="pv-lifespan">Expected lifespan (months) <span class="required">*</span></label>
-                  <input type="number" id="pv-lifespan" placeholder="e.g. 24" min="1" step="1" />
-                  <p class="field__hint" id="pv-lifespan-hint">Auto-filled when you enter a known brand</p>
-                  <span class="field__error" id="err-pv-lifespan"></span>
-                </div>
+              <legend class="form-group__legend">
+                Expected lifespan
+                <span class="ai-badge" id="pv-lifespan-badge" hidden>✨ AI filled</span>
+              </legend>
+              <div class="field field--half">
+                <label for="pv-lifespan">Lifespan (months) <span class="required">*</span></label>
+                <input type="number" id="pv-lifespan" placeholder="Auto-filled from brand" min="1" step="1" />
+                <p class="field__hint" id="pv-lifespan-hint">Auto-filled when brand is detected</p>
+                <span class="field__error" id="err-pv-lifespan"></span>
               </div>
             </fieldset>
 
@@ -384,29 +415,6 @@
               </button>
             </div>
             <p class="url-fetcher__hint" id="fetch-status"></p>
-          </div>
-
-          <div class="url-fetcher__divider"><span>or search by name</span></div>
-
-          <!-- Name search via SerpAPI -->
-          <div class="url-fetcher">
-            <div class="url-fetcher__row">
-              <div class="field url-fetcher__field">
-                <label for="wishlistSearch">Search for a product <span class="optional">auto-fills name, price &amp; image via Google Shopping</span></label>
-                <input
-                  type="text"
-                  id="wishlistSearch"
-                  placeholder="e.g. Espresso machine, Dyson Airwrap..."
-                  autocomplete="off"
-                />
-              </div>
-              <button type="button" class="btn btn--secondary url-fetcher__btn" id="btn-search-product">
-                <span id="search-btn-text">Search</span>
-              </button>
-            </div>
-            <p class="url-fetcher__hint" id="search-status"></p>
-            <!-- Top results picker (shown when multiple results returned) -->
-            <div class="search-results" id="search-results" hidden></div>
           </div>
 
           <div class="url-fetcher__divider"><span>or fill in manually</span></div>

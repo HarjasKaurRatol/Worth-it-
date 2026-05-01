@@ -1475,3 +1475,92 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(192,80,74,.12); }
   font-weight: 700;
   color: var(--clr-text);
 }
+
+/* ─── Product Value: AI Fill enhancements ─────────────────────────────────── */
+
+/* AI auto-filled badge next to labels */
+.ai-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--clr-accent-dark);
+  background: var(--clr-accent-pale);
+  border: 1px solid rgba(201,125,125,.3);
+  border-radius: 20px;
+  padding: 0.1em 0.55em;
+  margin-left: 0.3em;
+  vertical-align: middle;
+  animation: fadeSlideUp 0.2s ease both;
+}
+
+/* Status line below the product name input */
+.pv-autofill-status--ok  { color: var(--clr-green) !important; }
+.pv-autofill-status--err { color: var(--clr-red) !important; }
+
+/* Product name row: input + AI Fill button side by side */
+.pv-name-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: flex-end;
+}
+.pv-name-row input { flex: 1; }
+.pv-autofill-btn {
+  flex-shrink: 0;
+  padding: 0.6rem 1rem;
+  white-space: nowrap;
+}
+
+/* Usage fieldset: subtle highlight so it stands out */
+.pv-usage-fieldset {
+  background: var(--clr-accent-pale);
+  border: 1.5px solid rgba(201,125,125,.25);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+}
+.pv-usage-fieldset .form-group__legend { color: var(--clr-accent-dark); }
+
+/* Usage row: number input + per-week/per-month toggle */
+.pv-usage-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: stretch;
+}
+.pv-usage-row input[type="number"] { width: 120px; flex-shrink: 0; }
+
+/* Week / Month toggle buttons */
+.pv-period-toggle {
+  display: flex;
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.pv-period-btn {
+  flex: 1;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  background: var(--clr-surface);
+  color: var(--clr-text-muted);
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.pv-period-btn + .pv-period-btn {
+  border-left: 1px solid var(--clr-border);
+}
+.pv-period-btn:hover { background: var(--clr-bg); color: var(--clr-text); }
+.pv-period-btn--active {
+  background: var(--clr-accent);
+  color: #fff;
+}
+.pv-period-btn--active:hover { background: var(--clr-accent-dark); }
+
+@media (max-width: 520px) {
+  .pv-name-row { flex-direction: column; align-items: stretch; }
+  .pv-usage-row { flex-wrap: wrap; }
+  .pv-usage-row input[type="number"] { width: 100%; }
+  .pv-period-toggle { width: 100%; }
+}
