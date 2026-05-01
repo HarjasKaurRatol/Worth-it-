@@ -919,26 +919,80 @@ function deleteWishlistItem(id) {
   renderSmartInsights();
 }
 
-/** Pre-fill the calculator with this wishlist item and scroll to it */
+/** Load a wishlist item into the Product Value calculator and run the analysis */
 function calculateWishlistItem(id) {
   const item = loadWishlist().find(i => i.id === id);
   if (!item) return;
-  // Fill only the fields we know; leave the rest blank for the user to complete
-  fields.productName.value     = item.name;
-  fields.productCost.value     = item.price !== null ? item.price : '';
-  fields.alternativeCost.value = '';
-  fields.frequencyPerMonth.value = '';
-  fields.usagePerMonth.value   = '';
-  fields.maintenanceCost.value = '';
-  fields.lifespanMonths.value  = '';
-  clearErrors();
-  hideResults();
-  lastCalculation = null;
-  lastData        = null;
+
+  // Switch to Product Value tab
+  setCalculatorMode('product-value');
+
+  // Reset manual-edit flag so auto-detect can run
+  pvFields.brand._manuallyEdited = false;
+
+  // Product name
+  pvFields.name.value = item.name;
+
+  // Auto-detect brand from name → fills brand + lifespan + rep card
+  const brandKey = detectBrandFromName(item.name);
+  if (brandKey) {
+    applyDetectedBrand(brandKey, true);
+  } else {
+    pvFields.brand.value = '';
+    repCard.hidden = true;
+    document.getElementById('pv-brand-badge').hidden = true;
+  }
+
+  // Price
+  pvFields.price.value = item.price !== null ? item.price : '';
+  document.getElementById('pv-price-badge').hidden = item.price === null;
+
+  // Lifespan — prefer the saved wishlist value over the brand default
+  if (item.expected_lifespan) {
+    pvFields.lifespan.value = item.expected_lifespan;
+    document.getElementById('pv-lifespan-hint').textContent = 'Loaded from your wishlist';
+    document.getElementById('pv-lifespan-badge').hidden = false;
+  }
+
+  // Usage — if saved as monthly, set the toggle to "per month"
+  if (item.uses_per_month) {
+    pvUsagePeriod = 'month';
+    pvFields.uses.value = item.uses_per_month;
+  } else {
+    pvUsagePeriod = 'week';
+    pvFields.uses.value = '';
+  }
+  document.querySelectorAll('.pv-period-btn').forEach(b => {
+    b.classList.toggle('pv-period-btn--active', b.dataset.period === pvUsagePeriod);
+  });
+
+  // Clear any previous results / errors
+  pvResults.hidden = true;
+  lastPvCalc = null;
+  lastPvData = null;
+
+  // Status hint
+  const statusEl = document.getElementById('pv-autofill-status');
+  statusEl.textContent = 'Loaded from your wishlist — review the details and hit Calculate.';
+  statusEl.className = 'field__hint pv-autofill-status--ok';
+
+  // Scroll to calculator
   document.getElementById('calculator').scrollIntoView({ behavior: 'smooth' });
-  // Focus the first field that still needs a value
-  const focusTarget = item.price !== null ? fields.alternativeCost : fields.productCost;
-  setTimeout(() => focusTarget.focus(), 400);
+
+  // If all required fields are present, auto-calculate after scroll lands
+  const hasAll = item.name && item.price &&
+                 pvFields.brand.value && pvFields.lifespan.value && pvFields.uses.value;
+  if (hasAll) {
+    setTimeout(() => pvForm.dispatchEvent(new Event('submit', { cancelable: true })), 650);
+  } else {
+    // Focus the first field still needing a value
+    setTimeout(() => {
+      if (!pvFields.price.value)    { pvFields.price.focus(); return; }
+      if (!pvFields.brand.value)    { pvFields.brand.focus(); return; }
+      if (!pvFields.uses.value)     { pvFields.uses.focus();  return; }
+      if (!pvFields.lifespan.value) { pvFields.lifespan.focus(); }
+    }, 450);
+  }
 }
 
 /** Render the wishlist section */
