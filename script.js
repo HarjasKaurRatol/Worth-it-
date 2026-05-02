@@ -2033,8 +2033,9 @@ function renderCalendar() {
 
     dayEl.appendChild(dayEventsEl);
 
-    // Click handler
-    dayEl.addEventListener('click', () => openEventForm(currentDate));
+    // Snapshot the date so the closure captures a fixed value, not the shared mutable object
+    const capturedDate = new Date(currentDate);
+    dayEl.addEventListener('click', () => openEventForm(capturedDate));
 
     calendarGrid.appendChild(dayEl);
     currentDate.setDate(currentDate.getDate() + 1);
