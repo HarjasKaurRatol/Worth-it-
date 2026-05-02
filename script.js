@@ -2265,8 +2265,19 @@ generateSuggestionsBtn.addEventListener('click', generatePurchaseSuggestions);
 
 async function initApp() {
   try {
-    const cred = await auth.signInAnonymously();
-    _uid = cred.user.uid;
+    // Wait for Firebase to restore any persisted auth session before deciding
+    // whether to create a new anonymous user. Calling signInAnonymously() before
+    // the restore completes causes a new UID to be issued every reload, losing data.
+    const existingUser = await new Promise((resolve, reject) => {
+      const unsubscribe = auth.onAuthStateChanged(user => { unsubscribe(); resolve(user); }, reject);
+    });
+
+    if (existingUser) {
+      _uid = existingUser.uid;
+    } else {
+      const cred = await auth.signInAnonymously();
+      _uid = cred.user.uid;
+    }
 
     const [saved, wishlist, events] = await Promise.all([
       _fsLoad(STORAGE_KEY),
