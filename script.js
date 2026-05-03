@@ -1084,7 +1084,7 @@ function persistWishlist(items) {
 }
 
 /** Add a new item to the wishlist */
-function addWishlistItem(name, price, note, imageUrl, analysisData, category) {
+function addWishlistItem(name, price, note, imageUrl, analysisData, category, url) {
   const items = loadWishlist();
   items.unshift({
     id:                       Date.now().toString(),
@@ -1093,6 +1093,7 @@ function addWishlistItem(name, price, note, imageUrl, analysisData, category) {
     note:                     note.trim() || null,
     imageUrl:                 imageUrl || null,
     category:                 category || null,
+    productUrl:               url || null,
     createdAt:                new Date().toISOString(),
     expected_lifespan:        analysisData ? (analysisData.lifespan || null) : null,
     uses_per_month:           analysisData ? (analysisData.usesPerMonth || null) : null,
@@ -1118,7 +1119,7 @@ function deleteWishlistItem(id) {
 let editingWishlistId = null;
 
 /** Overwrite a wishlist item in-place, preserving id and createdAt */
-function updateWishlistItem(id, name, price, note, imageUrl, analysisData, category) {
+function updateWishlistItem(id, name, price, note, imageUrl, analysisData, category, url) {
   const items = loadWishlist();
   const idx   = items.findIndex(i => i.id === id);
   if (idx === -1) return;
@@ -1129,6 +1130,7 @@ function updateWishlistItem(id, name, price, note, imageUrl, analysisData, categ
     note:                     note.trim() || null,
     imageUrl:                 imageUrl || items[idx].imageUrl,
     category:                 category || null,
+    productUrl:               url || items[idx].productUrl || null,
     expected_lifespan:        analysisData.lifespan        || null,
     uses_per_month:           analysisData.usesPerMonth    || null,
     replaces_recurring_cost:  analysisData.replacesRecurring,
@@ -1152,6 +1154,7 @@ function editWishlistItem(id) {
   wishlistPriceEl.value         = item.price !== null ? item.price : '';
   wishlistNoteEl.value          = item.note  || '';
   wishlistCategoryEl.value      = item.category || '';
+  wishlistUrlEl.value           = item.productUrl || '';
   wishlistLifespanEl.value      = item.expected_lifespan        || '';
   wishlistUsesPerMonthEl.value  = item.uses_per_month           || '';
   wishlistEventTagEl.value      = item.event_tag                || '';
@@ -1373,6 +1376,7 @@ function renderWishlist() {
         <div class="wishlist-card__actions">
           <button class="btn btn--primary"   data-waction="calculate" data-id="${item.id}">Calculate it</button>
           <button class="btn btn--secondary" data-waction="edit"      data-id="${item.id}">Edit</button>
+          ${item.productUrl ? `<a href="${escapeHtml(item.productUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn--ghost">Link ↗</a>` : ''}
           <button class="btn btn--ghost"     data-waction="delete"    data-id="${item.id}">Remove</button>
         </div>
       </div>`;
@@ -1412,11 +1416,13 @@ wishlistForm.addEventListener('submit', (e) => {
     eventTag:          wishlistEventTagEl.value.trim()            || null,
   };
 
+  const productUrl = wishlistUrlEl.value.trim() || null;
+
   if (editingWishlistId) {
-    updateWishlistItem(editingWishlistId, name, price, note, pendingImageUrl, analysisData, category);
+    updateWishlistItem(editingWishlistId, name, price, note, pendingImageUrl, analysisData, category, productUrl);
     showToast('Item updated', 'ok');
   } else {
-    addWishlistItem(name, price, note, pendingImageUrl, analysisData, category);
+    addWishlistItem(name, price, note, pendingImageUrl, analysisData, category, productUrl);
     showWishlistConfirmation(name);
   }
 
