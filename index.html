@@ -11,18 +11,27 @@
 </head>
 <body>
 
+  <!-- Loading overlay — shown until Firebase data is ready -->
+  <div id="app-loading" class="app-loading" role="status" aria-label="Loading your data">
+    <div class="app-loading__spinner"></div>
+    <p class="app-loading__text">Loading your data…</p>
+  </div>
+
   <!-- ========== NAVIGATION ========== -->
   <nav class="nav" id="nav">
     <div class="container">
       <div class="nav__inner">
         <a href="#top" class="nav__brand">Worth It?</a>
-        <div class="nav__links">
+        <div class="nav__links" id="nav-links">
           <a href="#calculator" class="nav__link">Calculator</a>
           <a href="#saved" class="nav__link">Saved</a>
           <a href="#wishlist" class="nav__link">Wishlist</a>
           <a href="#insights" class="nav__link">Insights</a>
           <a href="#calendar" class="nav__link">Calendar</a>
         </div>
+        <button class="nav__hamburger" id="nav-hamburger" aria-label="Toggle navigation" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
       </div>
     </div>
   </nav>
@@ -88,6 +97,7 @@
     <div class="container">
       <h2 class="section-title">The Calculator</h2>
       <p class="section-sub">Fill in the details below and hit Calculate</p>
+      <p class="example-load-status" id="example-load-status" hidden></p>
 
       <!-- Mode tabs -->
       <div class="calc-tabs" role="tablist" aria-label="Calculator mode">
@@ -529,9 +539,16 @@
             </div>
           </details>
 
-          <button type="submit" class="btn btn--primary">Add to Wishlist</button>
+          <div class="form-actions">
+            <button type="submit" id="wishlist-submit-btn" class="btn btn--primary">Add to Wishlist</button>
+            <button type="button" id="wishlist-cancel-edit" class="btn btn--ghost" hidden>Cancel Edit</button>
+          </div>
+          <p class="wishlist-submit-status" id="wishlist-submit-status" hidden></p>
         </form>
       </div>
+
+      <!-- Category filter pills (shown when ≥2 categories exist) -->
+      <div class="wishlist-filters" id="wishlist-filters" hidden></div>
 
       <!-- Wishlist items -->
       <div id="wishlist-list">
@@ -635,6 +652,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+  <!-- Toast notification container -->
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
   <script src="script.js"></script>
 </body>

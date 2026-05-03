@@ -52,13 +52,31 @@ function _fsSave(key, value) {
   if (!_uid) return;
   db.collection('users').doc(_uid).collection('data').doc(key)
     .set({ v: value })
-    .catch(err => console.warn('[Firestore] write error:', err));
+    .catch(err => {
+      console.warn('[Firestore] write error:', err);
+      showToast('Couldn\'t save — check your connection', 'err');
+    });
 }
 
 async function _fsLoad(key) {
   if (!_uid) return null;
   const snap = await db.collection('users').doc(_uid).collection('data').doc(key).get();
   return snap.exists ? snap.data().v : null;
+}
+
+// ─── Toast notifications ──────────────────────────────────────────────────────
+
+function showToast(message, type = 'default', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast${type !== 'default' ? ` toast--${type}` : ''}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('toast--out');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+  }, duration);
 }
 
 // ─── Example data ────────────────────────────────────────────────────────────
@@ -145,11 +163,29 @@ const resultEls = {
 
 // ─── Utility helpers ──────────────────────────────────────────────────────────
 
-/** Format a number as a dollar string, e.g. 1234.5 → "$1,234.50" */
+// Detect the user's locale and map it to a currency so formatting feels local.
+// Falls back to USD for unknown locales.
+const _userLocale = navigator.language || 'en-US';
+const _CURRENCY_MAP = {
+  'en-US': 'USD', 'en-CA': 'CAD', 'en-GB': 'GBP', 'en-AU': 'AUD',
+  'en-NZ': 'NZD', 'en-IN': 'INR', 'en-SG': 'SGD', 'en-ZA': 'ZAR',
+  'en-IE': 'EUR', 'en-PH': 'PHP', 'en-PK': 'PKR', 'en-NG': 'NGN',
+  'fr-FR': 'EUR', 'de-DE': 'EUR', 'es-ES': 'EUR', 'it-IT': 'EUR',
+  'nl-NL': 'EUR', 'pt-PT': 'EUR', 'fr-BE': 'EUR', 'de-AT': 'EUR',
+  'fi-FI': 'EUR', 'el-GR': 'EUR', 'sk-SK': 'EUR', 'fr-LU': 'EUR',
+  'fr-CA': 'CAD', 'zh-CN': 'CNY', 'zh-TW': 'TWD', 'ja-JP': 'JPY',
+  'ko-KR': 'KRW', 'pt-BR': 'BRL', 'es-MX': 'MXN', 'tr-TR': 'TRY',
+  'pl-PL': 'PLN', 'sv-SE': 'SEK', 'nb-NO': 'NOK', 'da-DK': 'DKK',
+  'cs-CZ': 'CZK', 'hu-HU': 'HUF', 'ro-RO': 'RON', 'ru-RU': 'RUB',
+  'ar-SA': 'SAR', 'ar-AE': 'AED', 'he-IL': 'ILS', 'hi-IN': 'INR',
+};
+const _userCurrency = _CURRENCY_MAP[_userLocale] || 'USD';
+
+/** Format a number as a currency string using the user's locale, e.g. 1234.5 → "$1,234.50" */
 function formatMoney(value) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat(_userLocale, {
     style: 'currency',
-    currency: 'USD',
+    currency: _userCurrency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
@@ -361,7 +397,7 @@ function showResults(data, calc) {
 
   // Show the card
   resultsSection.hidden = false;
-  resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function hideResults() {
@@ -557,11 +593,23 @@ document.querySelector('.examples__grid').addEventListener('click', (e) => {
   const card = e.target.closest('.example-card');
   if (!card) return;
   const key = card.dataset.example;
-  if (EXAMPLES[key]) {
-    fillForm(EXAMPLES[key]);
-    // Scroll to and highlight calculator
-    document.getElementById('calculator').scrollIntoView({ behavior: 'smooth' });
+  if (!EXAMPLES[key]) return;
+
+  fillForm(EXAMPLES[key]);
+
+  // Brief visual flash on the clicked card
+  card.classList.add('example-card--active');
+  setTimeout(() => card.classList.remove('example-card--active'), 700);
+
+  // Status line above the calculator
+  const statusEl = document.getElementById('example-load-status');
+  if (statusEl) {
+    statusEl.textContent = `Loaded: ${EXAMPLES[key].productName}`;
+    statusEl.hidden = false;
+    setTimeout(() => { statusEl.hidden = true; }, 2500);
   }
+
+  document.getElementById('calculator').scrollIntoView({ behavior: 'smooth' });
 });
 
 /** Saved list actions — event delegation */
@@ -960,6 +1008,93 @@ function deleteWishlistItem(id) {
   renderSmartInsights();
 }
 
+// Tracks which wishlist item is being edited (null = add mode)
+let editingWishlistId = null;
+
+/** Overwrite a wishlist item in-place, preserving id and createdAt */
+function updateWishlistItem(id, name, price, note, imageUrl, analysisData, category) {
+  const items = loadWishlist();
+  const idx   = items.findIndex(i => i.id === id);
+  if (idx === -1) return;
+  items[idx] = {
+    ...items[idx],
+    name:                     name.trim(),
+    price:                    price || null,
+    note:                     note.trim() || null,
+    imageUrl:                 imageUrl || items[idx].imageUrl,
+    category:                 category || null,
+    expected_lifespan:        analysisData.lifespan        || null,
+    uses_per_month:           analysisData.usesPerMonth    || null,
+    replaces_recurring_cost:  analysisData.replacesRecurring,
+    recurring_cost_per_month: analysisData.recurringCost   || null,
+    event_tag:                analysisData.eventTag        || null,
+  };
+  persistWishlist(items);
+  renderWishlist();
+  renderSmartInsights();
+}
+
+/** Populate the wishlist form with an existing item and switch to edit mode */
+function editWishlistItem(id) {
+  const item = loadWishlist().find(i => i.id === id);
+  if (!item) return;
+
+  editingWishlistId = id;
+
+  wishlistNameEl.value          = item.name;
+  wishlistPriceEl.value         = item.price !== null ? item.price : '';
+  wishlistNoteEl.value          = item.note  || '';
+  wishlistCategoryEl.value      = item.category || '';
+  wishlistLifespanEl.value      = item.expected_lifespan        || '';
+  wishlistUsesPerMonthEl.value  = item.uses_per_month           || '';
+  wishlistEventTagEl.value      = item.event_tag                || '';
+  wishlistReplacesEl.checked    = item.replaces_recurring_cost  || false;
+  wishlistRecurringField.hidden = !item.replaces_recurring_cost;
+  wishlistRecurringCostEl.value = item.recurring_cost_per_month || '';
+
+  if (item.imageUrl) {
+    pendingImageUrl = item.imageUrl;
+    showProductPreview(item.name, item.imageUrl);
+  }
+
+  document.getElementById('wishlist-submit-btn').textContent    = 'Update Item';
+  document.getElementById('wishlist-cancel-edit').hidden        = false;
+  document.getElementById('wishlist-submit-status').hidden      = true;
+
+  document.getElementById('wishlist').scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => wishlistNameEl.focus(), 400);
+}
+
+/** Reset the wishlist form back to add mode */
+function cancelWishlistEdit() {
+  editingWishlistId = null;
+  wishlistForm.reset();
+  wishlistRecurringField.hidden = true;
+  clearProductPreview();
+  fetchStatus.textContent = '';
+  fetchStatus.className   = 'url-fetcher__hint';
+  document.getElementById('wishlist-submit-btn').textContent = 'Add to Wishlist';
+  document.getElementById('wishlist-cancel-edit').hidden     = true;
+  document.getElementById('wishlist-submit-status').hidden   = true;
+}
+
+/** Show a brief confirmation banner after a new item is added */
+function showWishlistConfirmation(name) {
+  const statusEl = document.getElementById('wishlist-submit-status');
+  statusEl.textContent = `✓ "${name}" added to your wishlist`;
+  statusEl.hidden = false;
+  setTimeout(() => { statusEl.hidden = true; }, 3000);
+
+  // Briefly highlight the freshly prepended card
+  setTimeout(() => {
+    const newCard = wishlistListEl.querySelector('.wishlist-card');
+    if (newCard) {
+      newCard.classList.add('wishlist-card--new');
+      newCard.addEventListener('animationend', () => newCard.classList.remove('wishlist-card--new'), { once: true });
+    }
+  }, 60);
+}
+
 /** Load a wishlist item into the Product Value calculator and run the analysis */
 function calculateWishlistItem(id) {
   const item = loadWishlist().find(i => i.id === id);
@@ -1036,16 +1171,44 @@ function calculateWishlistItem(id) {
   }
 }
 
+// Active category filter — 'All' means show everything
+let activeWishlistFilter = 'All';
+
+/** Render category filter pills above the wishlist list */
+function renderWishlistFilters(allItems) {
+  const filtersEl  = document.getElementById('wishlist-filters');
+  const categories = [...new Set(allItems.map(i => i.category).filter(Boolean))];
+
+  if (categories.length < 2) { filtersEl.hidden = true; return; }
+
+  filtersEl.hidden   = false;
+  filtersEl.innerHTML = ['All', ...categories].map(cat => `
+    <button class="wishlist-filter-btn${cat === activeWishlistFilter ? ' wishlist-filter-btn--active' : ''}"
+            data-filter="${escapeHtml(cat)}">${escapeHtml(cat)}</button>
+  `).join('');
+}
+
 /** Render the wishlist section */
 function renderWishlist() {
-  const items = loadWishlist();
+  const allItems = loadWishlist();
 
-  if (items.length === 0) {
+  renderWishlistFilters(allItems);
+
+  if (allItems.length === 0) {
     wishlistListEl.innerHTML = `
       <div class="empty-state">
         <div class="empty-state__icon">🛍️</div>
         <p class="empty-state__text">Your wishlist is empty.<br>Add something you've been eyeing and decide if it's worth it.</p>
       </div>`;
+    return;
+  }
+
+  const items = activeWishlistFilter === 'All'
+    ? allItems
+    : allItems.filter(i => i.category === activeWishlistFilter);
+
+  if (items.length === 0) {
+    wishlistListEl.innerHTML = `<p class="insights-hint" style="padding:var(--space-md) 0">No items in the <strong>${escapeHtml(activeWishlistFilter)}</strong> category.</p>`;
     return;
   }
 
@@ -1058,12 +1221,19 @@ function renderWishlist() {
       ? `<span class="wishlist-card__price">${formatMoney(item.price)}</span>`
       : `<span class="wishlist-card__price" style="color:var(--clr-text-muted);font-size:0.85rem;">No price set</span>`;
 
+    // Avoid wrapping in hardcoded quotes — use CSS quotes instead
     const noteHtml = item.note
-      ? `<p class="wishlist-card__note">"${escapeHtml(item.note)}"</p>`
+      ? `<p class="wishlist-card__note">${escapeHtml(item.note)}</p>`
       : '';
 
     const categoryHtml = item.category
       ? `<span class="wishlist-card__category">${escapeHtml(item.category)}</span>`
+      : '';
+
+    const hasSmartData = item.uses_per_month || item.expected_lifespan ||
+                         item.replaces_recurring_cost || item.event_tag;
+    const smartPromptHtml = !hasSmartData
+      ? `<p class="wishlist-card__smart-prompt">Add usage details to unlock Buy / Wait / Skip insights ↓</p>`
       : '';
 
     return `
@@ -1076,22 +1246,32 @@ function renderWishlist() {
         ${categoryHtml}
         ${priceHtml}
         ${noteHtml}
+        ${smartPromptHtml}
         <div class="wishlist-card__actions">
-          <button class="btn btn--primary"  data-waction="calculate" data-id="${item.id}">Calculate it</button>
-          <button class="btn btn--ghost"    data-waction="delete"    data-id="${item.id}">Remove</button>
+          <button class="btn btn--primary"   data-waction="calculate" data-id="${item.id}">Calculate it</button>
+          <button class="btn btn--secondary" data-waction="edit"      data-id="${item.id}">Edit</button>
+          <button class="btn btn--ghost"     data-waction="delete"    data-id="${item.id}">Remove</button>
         </div>
       </div>`;
   }).join('');
 }
 
-/** Wishlist form submit */
+// Category filter pill clicks
+document.getElementById('wishlist-filters').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-filter]');
+  if (!btn) return;
+  activeWishlistFilter = btn.dataset.filter;
+  renderWishlist();
+});
+
+/** Wishlist form submit — handles both add and edit modes */
 wishlistForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const name  = wishlistNameEl.value.trim();
-  const price = parseFloat(wishlistPriceEl.value) || null;
-  const note  = wishlistNoteEl.value.trim();
+  const name     = wishlistNameEl.value.trim();
+  const price    = parseFloat(wishlistPriceEl.value) || null;
+  const note     = wishlistNoteEl.value.trim();
+  const category = wishlistCategoryEl.value || null;
 
-  // Validate name
   const errEl = document.getElementById('err-wishlistName');
   if (!name) {
     errEl.textContent = 'Please enter an item name.';
@@ -1101,22 +1281,31 @@ wishlistForm.addEventListener('submit', (e) => {
   errEl.textContent = '';
   wishlistNameEl.classList.remove('input--error');
 
-  const category = wishlistCategoryEl.value || null;
-
-  addWishlistItem(name, price, note, pendingImageUrl, {
-    lifespan:          parseFloat(wishlistLifespanEl.value) || null,
-    usesPerMonth:      parseFloat(wishlistUsesPerMonthEl.value) || null,
+  const analysisData = {
+    lifespan:          parseFloat(wishlistLifespanEl.value)       || null,
+    usesPerMonth:      parseFloat(wishlistUsesPerMonthEl.value)   || null,
     replacesRecurring: wishlistReplacesEl.checked,
-    recurringCost:     parseFloat(wishlistRecurringCostEl.value) || null,
-    eventTag:          wishlistEventTagEl.value.trim() || null,
-  }, category);
+    recurringCost:     parseFloat(wishlistRecurringCostEl.value)  || null,
+    eventTag:          wishlistEventTagEl.value.trim()            || null,
+  };
 
-  // Reset the whole form and any fetch state
+  if (editingWishlistId) {
+    updateWishlistItem(editingWishlistId, name, price, note, pendingImageUrl, analysisData, category);
+    showToast('Item updated', 'ok');
+  } else {
+    addWishlistItem(name, price, note, pendingImageUrl, analysisData, category);
+    showWishlistConfirmation(name);
+  }
+
+  // Reset form and state
+  editingWishlistId = null;
   wishlistForm.reset();
   wishlistRecurringField.hidden = true;
   clearProductPreview();
   fetchStatus.textContent = '';
-  fetchStatus.className = 'url-fetcher__hint';
+  fetchStatus.className   = 'url-fetcher__hint';
+  document.getElementById('wishlist-submit-btn').textContent = 'Add to Wishlist';
+  document.getElementById('wishlist-cancel-edit').hidden     = true;
 });
 
 // Clear wishlist name error on input
@@ -1132,7 +1321,10 @@ wishlistListEl.addEventListener('click', (e) => {
   const { waction, id } = btn.dataset;
   if (waction === 'delete')    deleteWishlistItem(id);
   if (waction === 'calculate') calculateWishlistItem(id);
+  if (waction === 'edit')      editWishlistItem(id);
 });
+
+document.getElementById('wishlist-cancel-edit').addEventListener('click', cancelWishlistEdit);
 
 // ─── Smart Wishlist Insights ──────────────────────────────────────────────────
 
@@ -2297,11 +2489,32 @@ async function initApp() {
   renderSmartInsights();
   renderCalendar();
   renderEventsList();
+
+  // Reveal the page now that real data is rendered
+  const loadingEl = document.getElementById('app-loading');
+  if (loadingEl) loadingEl.classList.add('app-loading--hidden');
 }
 
 initApp();
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
+
+// Mobile hamburger toggle
+const _navHamburger = document.getElementById('nav-hamburger');
+const _navLinks     = document.getElementById('nav-links');
+if (_navHamburger && _navLinks) {
+  _navHamburger.addEventListener('click', () => {
+    const isOpen = _navLinks.classList.toggle('nav__links--open');
+    _navHamburger.setAttribute('aria-expanded', String(isOpen));
+  });
+  // Close the menu when a link is tapped
+  _navLinks.addEventListener('click', (e) => {
+    if (e.target.matches('.nav__link')) {
+      _navLinks.classList.remove('nav__links--open');
+      _navHamburger.setAttribute('aria-expanded', 'false');
+    }
+  });
+}
 
 function updateNavActive() {
   const navLinks = document.querySelectorAll('.nav__link');
