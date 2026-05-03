@@ -9,6 +9,7 @@
 const STORAGE_KEY         = 'worthit_calculations';
 const WISHLIST_KEY        = 'worthit_wishlist';
 const CALENDAR_EVENTS_KEY = 'worthit_calendar_events';
+const SETTINGS_KEY        = 'worthit_settings';
 
 /** Threshold: if user says they'll use ≥ this many times/month, it's "high usage" */
 const HIGH_USAGE_THRESHOLD = 4;
@@ -46,6 +47,7 @@ const _cache = {
   [STORAGE_KEY]:         [],
   [WISHLIST_KEY]:        [],
   [CALENDAR_EVENTS_KEY]: [],
+  [SETTINGS_KEY]:        {},
 };
 
 function _fsSave(key, value) {
@@ -196,6 +198,69 @@ function formatDate(isoString) {
   return new Date(isoString).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   });
+}
+
+// ─── Psychology of Money helpers ─────────────────────────────────────────────
+
+const HUMILITY_NOTES = {
+  'worth-it':     'This assumes things go as planned — real outcomes depend on usage, life changes, and a bit of luck.',
+  'consistent':   'This depends on consistent use. Circumstances change, so build in some flexibility.',
+  'probably-not': 'Sometimes the math says no, but life says yes. That\'s valid too.',
+  'no-savings':   'Sometimes the math says no, but life says yes. That\'s valid too.',
+  'excellent':    'This assumes things go as planned — real outcomes depend on usage, life changes, and a bit of luck.',
+  'decent':       'Mid-tier quality means you may need to replace sooner than expected. Factor that in.',
+  'use-more':     'Usage estimates tend to be optimistic. Consider a more conservative usage number.',
+  'budget-risk':  'Sometimes the math says no, but life says yes. That\'s valid too.',
+  'better-alt':   'Comparisons depend on estimates — real-world quality differences may shift the outcome.',
+};
+
+function _compoundFV(annualAmount, rate, years) {
+  return annualAmount * ((Math.pow(1 + rate, years) - 1) / rate);
+}
+
+function _buildResultExtras(amount, isEmotional, type) {
+  // type: 'savings' — yearly savings compounded (annuity FV)
+  // type: 'price'   — purchase price opportunity cost (lump-sum FV)
+  let html = '';
+  const settings  = _cache[SETTINGS_KEY] || {};
+  const dailyCost = Number(settings.dailyCost) || 0;
+  const rate      = 0.07;
+
+  if (amount > 0) {
+    const label = type === 'savings'
+      ? 'If you invested those annual savings at 7%/yr:'
+      : `Time value — if you invested ${formatMoney(amount)} at 7%/yr instead:`;
+
+    const v10 = type === 'savings' ? _compoundFV(amount, rate, 10) : amount * Math.pow(1 + rate, 10);
+    const v20 = type === 'savings' ? _compoundFV(amount, rate, 20) : amount * Math.pow(1 + rate, 20);
+    const v30 = type === 'savings' ? _compoundFV(amount, rate, 30) : amount * Math.pow(1 + rate, 30);
+
+    html += `
+      <div class="compound-box">
+        <p class="compound-box__label">${label}</p>
+        <div class="compound-box__grid">
+          <div class="compound-stat"><span class="compound-stat__years">10 yrs</span><span class="compound-stat__val">${formatMoney(v10)}</span></div>
+          <div class="compound-stat"><span class="compound-stat__years">20 yrs</span><span class="compound-stat__val">${formatMoney(v20)}</span></div>
+          <div class="compound-stat"><span class="compound-stat__years">30 yrs</span><span class="compound-stat__val">${formatMoney(v30)}</span></div>
+        </div>
+      </div>`;
+
+    if (dailyCost > 0) {
+      const days = Math.floor(amount / dailyCost);
+      if (days > 0) {
+        const freedomText = type === 'savings'
+          ? `Freedom earned: <strong>${days} day${days === 1 ? '' : 's'}</strong> of financial freedom per year`
+          : `This purchase costs <strong>${days} day${days === 1 ? '' : 's'}</strong> of financial freedom`;
+        html += `<p class="freedom-score">${freedomText}</p>`;
+      }
+    }
+  }
+
+  if (isEmotional) {
+    html += `<div class="emotion-flag-banner">Some flags raised — you might be reacting emotionally. The numbers are still valid, but consider waiting 48 hours before deciding.</div>`;
+  }
+
+  return html;
 }
 
 /** Read a numeric input — returns 0 if blank or NaN */
@@ -368,7 +433,7 @@ const VERDICT_CONFIG = {
 
 // ─── Display results ──────────────────────────────────────────────────────────
 
-function showResults(data, calc) {
+function showResults(data, calc, isEmotional = false) {
   const v = VERDICT_CONFIG[calc.verdict];
 
   // Header
@@ -392,8 +457,14 @@ function showResults(data, calc) {
   resultEls.yearly.textContent  = formatMoney(calc.yearlySavings);
   resultEls.perUse.textContent  = calc.costPerUse !== null ? formatMoney(calc.costPerUse) : 'N/A';
 
-  // Verdict text
+  // Verdict text + humility note
   resultEls.verdictText.textContent = v.text;
+  const humilityEl = document.getElementById('humility-note');
+  if (humilityEl) humilityEl.textContent = HUMILITY_NOTES[calc.verdict] || '';
+
+  // Compounding, freedom score, emotional flag
+  const extrasEl = document.getElementById('results-extras');
+  if (extrasEl) extrasEl.innerHTML = _buildResultExtras(calc.yearlySavings, isEmotional, 'savings');
 
   // Show the card
   resultsSection.hidden = false;
@@ -402,6 +473,36 @@ function showResults(data, calc) {
 
 function hideResults() {
   resultsSection.hidden = true;
+}
+
+// ─── Emotional check modal ─────────────────────────────────────────────────────
+
+function showEmotionModal(onContinue) {
+  const modal = document.getElementById('emotion-modal');
+  if (!modal) { onContinue(false); return; }
+
+  document.querySelectorAll('.emotion-check').forEach(cb => { cb.checked = false; });
+  const flagEl = document.getElementById('emotion-flag');
+  if (flagEl) flagEl.hidden = true;
+  modal.hidden = false;
+
+  const continueBtn = document.getElementById('emotion-continue-btn');
+  if (!continueBtn) { modal.hidden = true; onContinue(false); return; }
+
+  const handler = () => {
+    const uncheckedCount = [...document.querySelectorAll('.emotion-check')].filter(cb => !cb.checked).length;
+    modal.hidden = true;
+    continueBtn.removeEventListener('click', handler);
+    onContinue(uncheckedCount >= 2);
+  };
+  continueBtn.addEventListener('click', handler);
+
+  document.querySelectorAll('.emotion-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const unchecked = [...document.querySelectorAll('.emotion-check')].filter(c => !c.checked).length;
+      if (flagEl) flagEl.hidden = unchecked < 2;
+    }, { once: false });
+  });
 }
 
 // ─── Saved calculations storage ───────────────────────────────────────────────
@@ -553,6 +654,9 @@ function escapeHtml(str) {
 let lastCalculation = null;
 let lastData        = null;
 
+// Bypass the emotional check modal for programmatic form dispatches
+let _skipEmotionModal = false;
+
 /** Calculate on form submit */
 form.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -561,7 +665,7 @@ form.addEventListener('submit', (e) => {
   if (calc) {
     lastCalculation = calc;
     lastData        = data;
-    showResults(data, calc);
+    showEmotionModal((isEmotional) => showResults(data, calc, isEmotional));
   }
 });
 
@@ -999,6 +1103,7 @@ function addWishlistItem(name, price, note, imageUrl, analysisData, category) {
   persistWishlist(items);
   renderWishlist();
   renderSmartInsights();
+  renderMindsetWidgets();
 }
 
 /** Delete a wishlist item by id */
@@ -1006,6 +1111,7 @@ function deleteWishlistItem(id) {
   persistWishlist(loadWishlist().filter(item => item.id !== id));
   renderWishlist();
   renderSmartInsights();
+  renderMindsetWidgets();
 }
 
 // Tracks which wishlist item is being edited (null = add mode)
@@ -1032,6 +1138,7 @@ function updateWishlistItem(id, name, price, note, imageUrl, analysisData, categ
   persistWishlist(items);
   renderWishlist();
   renderSmartInsights();
+  renderMindsetWidgets();
 }
 
 /** Populate the wishlist form with an existing item and switch to edit mode */
@@ -1159,7 +1266,10 @@ function calculateWishlistItem(id) {
   const hasAll = item.name && item.price &&
                  pvFields.brand.value && pvFields.lifespan.value && pvFields.uses.value;
   if (hasAll) {
-    setTimeout(() => pvForm.dispatchEvent(new Event('submit', { cancelable: true })), 650);
+    setTimeout(() => {
+      _skipEmotionModal = true;
+      pvForm.dispatchEvent(new Event('submit', { cancelable: true }));
+    }, 650);
   } else {
     // Focus the first field still needing a value
     setTimeout(() => {
@@ -1212,6 +1322,11 @@ function renderWishlist() {
     return;
   }
 
+  const _ws        = _cache[SETTINGS_KEY] || {};
+  const _monthlyExp = Number(_ws.monthlyExp) || 0;
+  const _wsSavings  = Number(_ws.savings)    || 0;
+  const _runway     = (_monthlyExp > 0 && _wsSavings > 0) ? _wsSavings / _monthlyExp : null;
+
   wishlistListEl.innerHTML = items.map(item => {
     const imageHtml = item.imageUrl
       ? `<img class="wishlist-card__image" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.style.display='none'" />`
@@ -1220,6 +1335,13 @@ function renderWishlist() {
     const priceHtml = item.price !== null
       ? `<span class="wishlist-card__price">${formatMoney(item.price)}</span>`
       : `<span class="wishlist-card__price" style="color:var(--clr-text-muted);font-size:0.85rem;">No price set</span>`;
+
+    const runwayHtml = (_runway !== null && item.price && _monthlyExp > 0) ? (() => {
+      const daysLost = Math.round((item.price / _monthlyExp) * 30);
+      if (daysLost < 1) return '';
+      const thin = _runway < 3;
+      return `<p class="wishlist-card__runway${thin ? ' wishlist-card__runway--warn' : ''}">~${daysLost} day${daysLost === 1 ? '' : 's'} of runway${thin ? ' · runway is thin' : ''}</p>`;
+    })() : '';
 
     // Avoid wrapping in hardcoded quotes — use CSS quotes instead
     const noteHtml = item.note
@@ -1245,6 +1367,7 @@ function renderWishlist() {
         </div>
         ${categoryHtml}
         ${priceHtml}
+        ${runwayHtml}
         ${noteHtml}
         ${smartPromptHtml}
         <div class="wishlist-card__actions">
@@ -1429,15 +1552,47 @@ function analyzeWishlist(wishlistItems, calendarEvents) {
   });
 }
 
+let _biasCardDismissed = false;
+
+function _getBiasAwareness() {
+  if (_biasCardDismissed) return null;
+  const entries = loadSaved();
+  const positives = entries.filter(e => ['worth-it', 'excellent', 'consistent', 'decent'].includes(e.verdict)).length;
+  const negatives = entries.filter(e => ['probably-not', 'no-savings', 'budget-risk', 'use-more', 'better-alt'].includes(e.verdict)).length;
+  const total = positives + negatives;
+  if (total < 5) return null;
+  if (positives / total >= 0.8) {
+    return { type: 'optimist', message: 'Pattern noticed: you tend to see most things as "Worth It". Everyone\'s financial lens is shaped by their past — if you grew up comfortable, you may naturally underestimate risk. Not wrong, just worth knowing.' };
+  }
+  if (negatives / total >= 0.8) {
+    return { type: 'avoider', message: 'Pattern noticed: you rarely see purchases as "Worth It". If you grew up with financial stress, you may avoid genuinely good investments out of habit. Not wrong — just worth noticing.' };
+  }
+  return null;
+}
+
 function renderSmartInsights() {
   const el = document.getElementById('insights-content');
   if (!el) return;
 
+  if (!el._biasListenerAdded) {
+    el.addEventListener('click', (e) => {
+      if (e.target.matches('.bias-card__dismiss')) {
+        _biasCardDismissed = true;
+        el.querySelector('.bias-card')?.remove();
+      }
+    });
+    el._biasListenerAdded = true;
+  }
+
   const wishlistItems  = loadWishlist();
   const calendarEvents = loadCalendarEvents();
+  const biasInfo       = _getBiasAwareness();
+  const biasHtml       = biasInfo
+    ? `<div class="bias-card"><button class="bias-card__dismiss" aria-label="Dismiss">✕</button><p class="bias-card__text">${biasInfo.message}</p></div>`
+    : '';
 
   if (wishlistItems.length === 0) {
-    el.innerHTML = '<p class="insights-hint">Add items to your wishlist to see Smart Insights.</p>';
+    el.innerHTML = biasHtml + '<p class="insights-hint">Add items to your wishlist to see Smart Insights.</p>';
     return;
   }
 
@@ -1447,7 +1602,7 @@ function renderSmartInsights() {
   );
 
   if (!hasData) {
-    el.innerHTML = `<p class="insights-hint">Expand <strong>Smart analysis details</strong> on any wishlist item to unlock Buy / Wait / Skip insights.</p>`;
+    el.innerHTML = biasHtml + `<p class="insights-hint">Expand <strong>Smart analysis details</strong> on any wishlist item to unlock Buy / Wait / Skip insights.</p>`;
     return;
   }
 
@@ -1468,7 +1623,7 @@ function renderSmartInsights() {
     'Not Worth It': 'insight-badge--no',
   };
 
-  el.innerHTML = ['Buy Now', 'Wait', 'Not Worth It'].map(decision => {
+  el.innerHTML = biasHtml + ['Buy Now', 'Wait', 'Not Worth It'].map(decision => {
     const items = groups[decision];
     if (items.length === 0) return '';
     return `
@@ -1498,6 +1653,132 @@ function renderSmartInsights() {
       </section>`;
   }).join('');
 }
+
+// ─── Money Mindset: widgets ───────────────────────────────────────────────────
+
+function renderMindsetWidgets() {
+  const container = document.getElementById('mindset-widgets');
+  if (!container) return;
+
+  const s           = _cache[SETTINGS_KEY] || {};
+  const savings     = Number(s.savings)       || 0;
+  const earmarked   = Number(s.earmarked)     || 0;
+  const monthlyExp  = Number(s.monthlyExp)    || 0;
+  const budget      = Number(s.discretionary) || 0;
+  const wishlistTotal = loadWishlist().reduce((sum, item) => sum + (Number(item.price) || 0), 0);
+
+  const hasAny = savings > 0 || monthlyExp > 0 || budget > 0;
+  if (!hasAny) {
+    container.innerHTML = '<p class="insights-hint">Fill in your financial profile above to see runway, flexibility fund, and "enough" budget insights.</p>';
+    return;
+  }
+
+  let html = '<div class="mindset-widgets-grid">';
+
+  // Feature 7: Flexibility Fund
+  if (savings > 0) {
+    const flex    = Math.max(0, savings - earmarked);
+    const noFlex  = flex === 0;
+    html += `
+      <div class="mindset-widget">
+        <div class="mindset-widget__icon">🛟</div>
+        <div class="mindset-widget__body">
+          <h4 class="mindset-widget__title">Flexibility Fund</h4>
+          <p class="mindset-widget__desc">Savings with no job — your options, your freedom.</p>
+          <p class="mindset-widget__amount${noFlex ? ' mindset-widget__amount--warn' : ''}">${formatMoney(flex)}</p>
+          <p class="mindset-widget__sub">unallocated savings</p>
+          ${earmarked > 0 ? `<p class="mindset-widget__meta">${formatMoney(savings)} total − ${formatMoney(earmarked)} earmarked</p>` : ''}
+          ${noFlex ? '<p class="mindset-widget__alert">All your savings have a job — keep some unassigned for life\'s surprises.</p>' : ''}
+        </div>
+      </div>`;
+  }
+
+  // Feature 5: Financial Runway
+  if (savings > 0 && monthlyExp > 0) {
+    const runway      = savings / monthlyExp;
+    const amtClass    = runway < 3 ? ' mindset-widget__amount--warn' : runway >= 6 ? ' mindset-widget__amount--good' : '';
+    html += `
+      <div class="mindset-widget">
+        <div class="mindset-widget__icon">⏱️</div>
+        <div class="mindset-widget__body">
+          <h4 class="mindset-widget__title">Financial Runway</h4>
+          <p class="mindset-widget__desc">How long you could go without income.</p>
+          <p class="mindset-widget__amount${amtClass}">${runway.toFixed(1)} months</p>
+          <p class="mindset-widget__sub">at ${formatMoney(monthlyExp)}/mo expenses</p>
+          ${runway < 3 ? '<p class="mindset-widget__alert">Under 3 months — not the best time for non-essential purchases.</p>' : ''}
+          ${runway >= 6 ? '<p class="mindset-widget__note-good">Solid runway — room for considered purchases.</p>' : ''}
+        </div>
+      </div>`;
+  }
+
+  // Feature 4: "Enough" Budget
+  if (budget > 0) {
+    const gap    = wishlistTotal - budget;
+    const isOver = gap > 0;
+    html += `
+      <div class="mindset-widget">
+        <div class="mindset-widget__icon">🎯</div>
+        <div class="mindset-widget__body">
+          <h4 class="mindset-widget__title">Your "Enough" Budget</h4>
+          <p class="mindset-widget__desc">Monthly limit vs. your wishlist total.</p>
+          <div class="mindset-enough-row">
+            <div class="mindset-enough-col">
+              <span class="mindset-enough-col__val">${formatMoney(budget)}</span>
+              <span class="mindset-enough-col__label">your limit</span>
+            </div>
+            <span class="mindset-enough-sep">vs.</span>
+            <div class="mindset-enough-col${isOver ? ' mindset-enough-col--over' : ''}">
+              <span class="mindset-enough-col__val">${formatMoney(wishlistTotal)}</span>
+              <span class="mindset-enough-col__label">wishlist total</span>
+            </div>
+          </div>
+          ${isOver
+            ? `<p class="mindset-widget__alert">You're ${formatMoney(gap)} over your "enough" limit — worth prioritizing.</p>`
+            : `<p class="mindset-widget__note-good">Wishlist is within your "enough" budget.</p>`}
+        </div>
+      </div>`;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ─── Money Mindset: profile form ──────────────────────────────────────────────
+
+function loadProfileSettings() {
+  const s = _cache[SETTINGS_KEY] || {};
+  [
+    ['profile-daily-cost',    'dailyCost'],
+    ['profile-monthly-exp',   'monthlyExp'],
+    ['profile-savings',       'savings'],
+    ['profile-earmarked',     'earmarked'],
+    ['profile-discretionary', 'discretionary'],
+  ].forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el && s[key]) el.value = s[key];
+  });
+}
+
+document.getElementById('profile-save-btn').addEventListener('click', () => {
+  _cache[SETTINGS_KEY] = {
+    dailyCost:     parseFloat(document.getElementById('profile-daily-cost').value)    || 0,
+    monthlyExp:    parseFloat(document.getElementById('profile-monthly-exp').value)   || 0,
+    savings:       parseFloat(document.getElementById('profile-savings').value)       || 0,
+    earmarked:     parseFloat(document.getElementById('profile-earmarked').value)     || 0,
+    discretionary: parseFloat(document.getElementById('profile-discretionary').value) || 0,
+  };
+  _fsSave(SETTINGS_KEY, _cache[SETTINGS_KEY]);
+
+  const statusEl = document.getElementById('profile-save-status');
+  if (statusEl) {
+    statusEl.textContent = '✓ Profile saved';
+    statusEl.hidden = false;
+    setTimeout(() => { statusEl.hidden = true; }, 2500);
+  }
+
+  renderMindsetWidgets();
+  renderWishlist();
+});
 
 // ─── Calculator mode tabs ────────────────────────────────────────────────────
 
@@ -1935,7 +2216,7 @@ function getProductValueVerdict(score, costPerUse, comparison) {
 
 // ─── Product Value: display results ──────────────────────────────────────────
 
-function showProductValueResults(data, calc) {
+function showProductValueResults(data, calc, isEmotional = false) {
   const v = PV_VERDICT_CONFIG[calc.verdict];
 
   // Header
@@ -1993,8 +2274,14 @@ function showProductValueResults(data, calc) {
     cmpBlock.hidden = true;
   }
 
-  // Verdict text
+  // Verdict text + humility note
   document.getElementById('pv-verdict-text').textContent = v.text;
+  const pvHumilityEl = document.getElementById('pv-humility-note');
+  if (pvHumilityEl) pvHumilityEl.textContent = HUMILITY_NOTES[calc.verdict] || '';
+
+  // Compounding, freedom score, emotional flag
+  const pvExtrasEl = document.getElementById('pv-results-extras');
+  if (pvExtrasEl) pvExtrasEl.innerHTML = _buildResultExtras(data.price, isEmotional, 'price');
 
   pvResults.hidden = false;
   pvResults.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2048,12 +2335,18 @@ pvForm.addEventListener('submit', (e) => {
   const calc = calculateProductValue(data);
   lastPvData = data;
   lastPvCalc = calc;
-  showProductValueResults(data, calc);
+
+  if (_skipEmotionModal) {
+    _skipEmotionModal = false;
+    showProductValueResults(data, calc, false);
+    return;
+  }
+  showEmotionModal((isEmotional) => showProductValueResults(data, calc, isEmotional));
 });
 
 document.getElementById('pv-btn-save').addEventListener('click', () => {
-  // Run calculation first if not yet done
   if (!lastPvCalc || !lastPvData) {
+    _skipEmotionModal = true;
     pvForm.dispatchEvent(new Event('submit', { cancelable: true }));
     if (!lastPvCalc) return;
   }
@@ -2471,15 +2764,17 @@ async function initApp() {
       _uid = cred.user.uid;
     }
 
-    const [saved, wishlist, events] = await Promise.all([
+    const [saved, wishlist, events, settings] = await Promise.all([
       _fsLoad(STORAGE_KEY),
       _fsLoad(WISHLIST_KEY),
       _fsLoad(CALENDAR_EVENTS_KEY),
+      _fsLoad(SETTINGS_KEY),
     ]);
 
-    if (saved)    _cache[STORAGE_KEY]         = saved;
-    if (wishlist) _cache[WISHLIST_KEY]         = wishlist;
-    if (events)   _cache[CALENDAR_EVENTS_KEY]  = events;
+    if (saved)     _cache[STORAGE_KEY]         = saved;
+    if (wishlist)  _cache[WISHLIST_KEY]         = wishlist;
+    if (events)    _cache[CALENDAR_EVENTS_KEY]  = events;
+    if (settings)  _cache[SETTINGS_KEY]         = settings;
   } catch (err) {
     console.warn('[Firebase] init failed — running with empty data:', err.message);
   }
@@ -2489,6 +2784,8 @@ async function initApp() {
   renderSmartInsights();
   renderCalendar();
   renderEventsList();
+  renderMindsetWidgets();
+  loadProfileSettings();
 
   // Reveal the page now that real data is rendered
   const loadingEl = document.getElementById('app-loading');

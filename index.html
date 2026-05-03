@@ -26,6 +26,7 @@
           <a href="#calculator" class="nav__link">Calculator</a>
           <a href="#saved" class="nav__link">Saved</a>
           <a href="#wishlist" class="nav__link">Wishlist</a>
+          <a href="#mindset" class="nav__link">Mindset</a>
           <a href="#insights" class="nav__link">Insights</a>
           <a href="#calendar" class="nav__link">Calendar</a>
         </div>
@@ -208,6 +209,8 @@
             </div>
           </div>
           <p class="verdict-text" id="verdict-text"></p>
+          <p class="humility-note" id="humility-note"></p>
+          <div class="results-extras" id="results-extras"></div>
         </div>
       </div>
 
@@ -380,6 +383,8 @@
             <p class="comparison-block__summary" id="cmp-summary"></p>
           </div>
           <p class="verdict-text" id="pv-verdict-text"></p>
+          <p class="humility-note" id="pv-humility-note"></p>
+          <div class="results-extras" id="pv-results-extras"></div>
         </div>
       </div>
 
@@ -557,6 +562,53 @@
     </div>
   </section>
 
+  <!-- ========== MONEY MINDSET ========== -->
+  <section class="mindset-section" id="mindset">
+    <div class="container">
+      <h2 class="section-title">Money Mindset</h2>
+      <p class="section-sub">Your financial profile powers freedom scores, runway, and "enough" insights across the app</p>
+
+      <div class="mindset-profile-card">
+        <h3 class="mindset-card-title">Your Financial Profile</h3>
+        <p class="mindset-card-desc">These numbers stay on your device and are never shared.</p>
+        <div class="mindset-profile-fields">
+          <div class="field">
+            <label for="profile-daily-cost">Daily cost of living ($)</label>
+            <input type="number" id="profile-daily-cost" placeholder="e.g. 80" min="0" step="1" />
+            <p class="field__hint">Converts savings into "days of freedom" on every calculator result</p>
+          </div>
+          <div class="field">
+            <label for="profile-monthly-exp">Monthly expenses ($)</label>
+            <input type="number" id="profile-monthly-exp" placeholder="e.g. 3000" min="0" step="10" />
+            <p class="field__hint">Powers your financial runway display</p>
+          </div>
+          <div class="field">
+            <label for="profile-savings">Current total savings ($)</label>
+            <input type="number" id="profile-savings" placeholder="e.g. 12000" min="0" step="100" />
+          </div>
+          <div class="field">
+            <label for="profile-earmarked">Savings earmarked for goals ($)</label>
+            <input type="number" id="profile-earmarked" placeholder="e.g. 5000" min="0" step="100" />
+            <p class="field__hint">Emergency fund, travel, down payment, etc.</p>
+          </div>
+          <div class="field">
+            <label for="profile-discretionary">Monthly "enough" budget ($)</label>
+            <input type="number" id="profile-discretionary" placeholder="e.g. 300" min="0" step="10" />
+            <p class="field__hint">Your personal limit for non-essential spending per month</p>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary" id="profile-save-btn">Save Profile</button>
+        </div>
+        <p class="profile-save-status" id="profile-save-status" hidden></p>
+      </div>
+
+      <div id="mindset-widgets">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </section>
+
   <!-- ========== SMART WISHLIST INSIGHTS ========== -->
   <section class="insights-section" id="insights">
     <div class="container">
@@ -655,6 +707,33 @@
 
   <!-- Toast notification container -->
   <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+
+  <!-- ========== EMOTIONAL CHECK MODAL ========== -->
+  <div id="emotion-modal" class="emotion-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="emotion-modal-title">
+    <div class="emotion-card">
+      <p class="emotion-card__eyebrow">Behavior beats brains</p>
+      <h3 class="emotion-card__title" id="emotion-modal-title">Quick check before the verdict</h3>
+      <p class="emotion-card__desc">The best financial decisions are calm ones. Take 10 seconds.</p>
+      <div class="emotion-questions">
+        <label class="emotion-question">
+          <input type="checkbox" id="emotion-q1" class="emotion-check" />
+          <span>Did you think of this purchase before today?</span>
+        </label>
+        <label class="emotion-question">
+          <input type="checkbox" id="emotion-q2" class="emotion-check" />
+          <span>Have you slept on it at least once?</span>
+        </label>
+        <label class="emotion-question">
+          <input type="checkbox" id="emotion-q3" class="emotion-check" />
+          <span>Is this about your own needs, not comparing to others?</span>
+        </label>
+      </div>
+      <p class="emotion-card__flag" id="emotion-flag" hidden>
+        Some flags raised — you might be reacting emotionally. The numbers are still valid, but consider revisiting in 48 hours.
+      </p>
+      <button class="btn btn--primary emotion-card__btn" id="emotion-continue-btn">See the verdict</button>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

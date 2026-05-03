@@ -1788,3 +1788,350 @@ select:focus {
   padding: 0.3rem 0.6rem;
   cursor: default;
 }
+
+/* ============================================================
+   Psychology of Money features
+   ============================================================ */
+
+/* ---------- Humility note ---------- */
+.humility-note {
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  font-style: italic;
+  margin-top: var(--space-xs);
+  line-height: 1.5;
+}
+
+/* ---------- Results extras container ---------- */
+.results-extras {
+  margin-top: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* ---------- Compounding box ---------- */
+.compound-box {
+  background: var(--clr-green-pale);
+  border: 1px solid rgba(90,138,106,.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+.compound-box__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-green);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-sm);
+}
+.compound-box__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+}
+.compound-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.compound-stat__years {
+  font-size: 0.72rem;
+  color: var(--clr-text-muted);
+  font-weight: 500;
+}
+.compound-stat__val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--clr-green);
+}
+@media (max-width: 400px) {
+  .compound-stat__val { font-size: 0.85rem; }
+}
+
+/* ---------- Freedom score ---------- */
+.freedom-score {
+  font-size: 0.875rem;
+  color: var(--clr-text-muted);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--clr-yellow-pale);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--clr-yellow);
+}
+.freedom-score strong {
+  color: var(--clr-yellow);
+}
+
+/* ---------- Emotional flag banner (inside results) ---------- */
+.emotion-flag-banner {
+  font-size: 0.85rem;
+  color: var(--clr-yellow);
+  background: var(--clr-yellow-pale);
+  border: 1px solid rgba(184,137,58,.25);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  line-height: 1.5;
+}
+
+/* ---------- Emotional check modal ---------- */
+.emotion-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(44,40,37,.55);
+  backdrop-filter: blur(3px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+}
+.emotion-overlay[hidden] { display: none; }
+.emotion-card {
+  background: var(--clr-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) clamp(var(--space-md), 5vw, 2.5rem);
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.emotion-card__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--clr-accent);
+}
+.emotion-card__title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  font-weight: 400;
+  color: var(--clr-text);
+}
+.emotion-card__desc {
+  font-size: 0.9rem;
+  color: var(--clr-text-muted);
+}
+.emotion-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: var(--space-xs) 0;
+}
+.emotion-question {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  font-size: 0.95rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.emotion-question input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  accent-color: var(--clr-accent);
+  cursor: pointer;
+}
+.emotion-card__flag {
+  font-size: 0.82rem;
+  color: var(--clr-yellow);
+  background: var(--clr-yellow-pale);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  line-height: 1.5;
+}
+.emotion-card__btn {
+  margin-top: var(--space-xs);
+  align-self: flex-start;
+}
+
+/* ---------- Money Mindset section ---------- */
+.mindset-section {
+  padding: var(--space-xl) 0;
+}
+.mindset-profile-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+}
+.mindset-card-title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+  margin-bottom: var(--space-xs);
+}
+.mindset-card-desc {
+  font-size: 0.875rem;
+  color: var(--clr-text-muted);
+  margin-bottom: var(--space-md);
+}
+.mindset-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.profile-save-status {
+  font-size: 0.875rem;
+  color: var(--clr-green);
+  font-weight: 500;
+  margin-top: var(--space-xs);
+  animation: fadeSlideUp 0.2s ease both;
+}
+
+/* ---------- Mindset widgets ---------- */
+.mindset-widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
+}
+.mindset-widget {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-sm);
+}
+.mindset-widget__icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+.mindset-widget__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+.mindset-widget__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.mindset-widget__desc {
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  line-height: 1.4;
+}
+.mindset-widget__amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--clr-green);
+  margin-top: var(--space-xs);
+  line-height: 1;
+}
+.mindset-widget__amount--warn { color: var(--clr-accent); }
+.mindset-widget__amount--good { color: var(--clr-green); }
+.mindset-widget__sub {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+}
+.mindset-widget__meta {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  margin-top: var(--space-xs);
+}
+.mindset-widget__alert {
+  font-size: 0.78rem;
+  color: var(--clr-accent-dark);
+  background: var(--clr-accent-pale);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: var(--space-xs);
+  line-height: 1.4;
+}
+.mindset-widget__note-good {
+  font-size: 0.78rem;
+  color: var(--clr-green);
+  background: var(--clr-green-pale);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  margin-top: var(--space-xs);
+  line-height: 1.4;
+}
+
+/* ---------- "Enough" budget comparison ---------- */
+.mindset-enough-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  flex-wrap: wrap;
+}
+.mindset-enough-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+.mindset-enough-col__val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--clr-green);
+}
+.mindset-enough-col--over .mindset-enough-col__val { color: var(--clr-accent); }
+.mindset-enough-col__label {
+  font-size: 0.7rem;
+  color: var(--clr-text-muted);
+  text-align: center;
+}
+.mindset-enough-sep {
+  font-size: 0.8rem;
+  color: var(--clr-text-muted);
+  font-weight: 500;
+}
+
+/* ---------- Wishlist card runway badge ---------- */
+.wishlist-card__runway {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+  background: var(--clr-bg);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.5rem;
+  display: inline-block;
+}
+.wishlist-card__runway--warn {
+  color: var(--clr-accent-dark);
+  background: var(--clr-accent-pale);
+  border-color: rgba(201,125,125,.3);
+}
+
+/* ---------- Bias awareness card ---------- */
+.bias-card {
+  position: relative;
+  background: var(--clr-yellow-pale);
+  border: 1px solid rgba(184,137,58,.25);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg) var(--space-md) var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.bias-card__text {
+  font-size: 0.875rem;
+  color: var(--clr-text);
+  line-height: 1.55;
+}
+.bias-card__dismiss {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  line-height: 1;
+}
+.bias-card__dismiss:hover { background: rgba(184,137,58,.15); }
