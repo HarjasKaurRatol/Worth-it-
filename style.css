@@ -982,7 +982,7 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(192,80,74,.12); }
 /* Wishlist items grid */
 #wishlist-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-md);
   align-items: stretch;
 }
@@ -1172,6 +1172,12 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(192,80,74,.12); }
 .wishlist-card__remove:hover {
   color: var(--clr-red);
   background: var(--clr-red-pale);
+}
+
+@media (max-width: 900px) {
+  #wishlist-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 520px) {
