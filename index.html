@@ -458,7 +458,7 @@
           <div class="product-preview" id="product-preview" hidden>
             <img id="preview-image" src="" alt="Product image" class="product-preview__img" />
             <div class="product-preview__info">
-              <p class="product-preview__label">Fetched from link</p>
+              <p class="product-preview__label">Product image</p>
               <p class="product-preview__name" id="preview-name"></p>
             </div>
             <button type="button" class="product-preview__clear" id="btn-clear-preview" aria-label="Remove preview">✕</button>
@@ -486,6 +486,15 @@
               />
             </div>
             <div class="field">
+              <label for="wishlistBrand">Brand / store <span class="optional">optional — auto-filled when detected</span></label>
+              <input
+                type="text"
+                id="wishlistBrand"
+                placeholder="e.g. IKEA, Sephora, Dyson"
+                autocomplete="off"
+              />
+            </div>
+            <div class="field">
               <label for="wishlistCategory">Category <span class="optional">optional</span></label>
               <select id="wishlistCategory">
                 <option value="">— Select category —</option>
@@ -499,6 +508,20 @@
                 <option value="Personal Care">Personal Care</option>
                 <option value="Other">Other</option>
               </select>
+            </div>
+            <div class="field wishlist-form-fields__image">
+              <label for="wishlistImageUrl">Product image URL <span class="optional">optional — add or replace fetched image</span></label>
+              <div class="manual-image-row">
+                <input
+                  type="url"
+                  id="wishlistImageUrl"
+                  placeholder="https://example.com/product-image.jpg"
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="button" class="btn btn--secondary manual-image-row__btn" id="btn-use-image-url">Use image</button>
+              </div>
+              <p class="field__hint" id="wishlist-image-hint">Open the product image in a new tab, then paste that image address here.</p>
             </div>
             <div class="field wishlist-form-fields__note">
               <label for="wishlistNote">Note <span class="optional">optional</span></label>

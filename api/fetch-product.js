@@ -2,13 +2,13 @@
  * Vercel Serverless Function — /api/fetch-product
  *
  * Fetches a product page server-side (avoiding browser CORS restrictions)
- * and extracts name, price, and image from:
+ * and extracts name, brand/store, price, and image from:
  *   1. JSON-LD structured data  (best — often server-rendered even on SPAs)
  *   2. Open Graph meta tags      (reliable for name + image)
  *   3. Common price meta tags    (works on simpler/Shopify stores)
  *
  * Usage:  GET /api/fetch-product?url=https://...
- * Returns: { name, price, imageUrl }  — any field may be null
+ * Returns: { name, brand, price, imageUrl }  — any field may be null
  */
 
 export default async function handler(req, res) {
@@ -37,7 +37,10 @@ export default async function handler(req, res) {
     // Use Amazon-specific parsing when applicable
     const isAmazon = /amazon\.(com|co\.uk|ca|de|fr|it|es|co\.jp|in|com\.au)/i.test(parsedUrl.hostname);
     const result = isAmazon ? extractAmazonInfo(html) : extractProductInfo(html);
-    return res.status(200).json(result);
+    return res.status(200).json({
+      ...result,
+      brand: result.brand || brandFromHostname(parsedUrl.hostname),
+    });
   } catch (err) {
     return res.status(502).json({ error: err.message || 'Failed to fetch page' });
   }
@@ -91,10 +94,11 @@ function extractProductInfo(html) {
 
   // Merge: prefer JSON-LD but fill gaps with meta
   const name     = fromJsonLd?.name     || fromMeta?.name     || null;
+  const brand    = fromJsonLd?.brand    || fromMeta?.brand    || null;
   const price    = fromJsonLd?.price    || fromMeta?.price    || null;
   const imageUrl = fromJsonLd?.imageUrl || fromMeta?.imageUrl || null;
 
-  return { name, price, imageUrl };
+  return { name, brand, price, imageUrl };
 }
 
 // ─── Amazon parser ────────────────────────────────────────────────────────────
@@ -118,6 +122,7 @@ function extractAmazonInfo(html) {
 
   return {
     name: title ? decodeHtmlEntities(title).trim() : null,
+    brand: generic.brand || null,
     price,
     imageUrl,
   };
@@ -146,10 +151,11 @@ function extractFromJsonLd(html) {
           if (item['@type'] !== 'Product') continue;
 
           const name     = item.name || null;
+          const brand    = resolveBrand(item.brand || item.manufacturer) || null;
           const imageUrl = resolveImage(item.image) || null;
           const price    = resolvePrice(item.offers) || null;
 
-          if (name || imageUrl) return { name, price, imageUrl };
+          if (name || brand || imageUrl) return { name, brand, price, imageUrl };
         }
       }
     } catch {
@@ -165,6 +171,14 @@ function resolveImage(image) {
   if (typeof image === 'string') return image;
   if (Array.isArray(image))     return image[0]?.url || image[0] || null;
   if (typeof image === 'object') return image.url || null;
+  return null;
+}
+
+function resolveBrand(brand) {
+  if (!brand) return null;
+  if (typeof brand === 'string') return cleanBrand(brand);
+  if (Array.isArray(brand)) return resolveBrand(brand[0]);
+  if (typeof brand === 'object') return cleanBrand(brand.name || brand['@id'] || null);
   return null;
 }
 
@@ -208,6 +222,12 @@ function extractFromMeta(html) {
   // Product image
   const imageUrl = getMeta('og:image', 'twitter:image:src', 'twitter:image') || null;
 
+  const brand = cleanBrand(getMeta(
+    'product:brand',
+    'og:brand',
+    'brand'
+  ));
+
   // Price (present in static HTML mainly on Shopify / simpler stores)
   const priceStr = getMeta(
     'product:price:amount',
@@ -219,7 +239,42 @@ function extractFromMeta(html) {
     ? parseFloat(priceStr.replace(/[^0-9.]/g, '')) || null
     : null;
 
-  return { name, price, imageUrl };
+  return { name, brand, price, imageUrl };
+}
+
+function brandFromHostname(hostname) {
+  const cleanHost = hostname
+    .replace(/^www\./i, '')
+    .replace(/^m\./i, '')
+    .toLowerCase();
+  const known = {
+    'ikea.com': 'IKEA',
+    'ulta.com': 'Ulta',
+    'sephora.com': 'Sephora',
+    'amazon.com': 'Amazon',
+    'target.com': 'Target',
+    'walmart.com': 'Walmart',
+    'nordstrom.com': 'Nordstrom',
+    'macys.com': "Macy's",
+    'bestbuy.com': 'Best Buy',
+  };
+  if (known[cleanHost]) return known[cleanHost];
+
+  const domain = cleanHost.split('.').slice(-2, -1)[0] || '';
+  if (!domain) return null;
+  return domain
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function cleanBrand(value) {
+  if (!value) return null;
+  const brand = String(value)
+    .replace(/^brand\s*:?\s*/i, '')
+    .trim();
+  return brand || null;
 }
 
 function escapeRegex(str) {

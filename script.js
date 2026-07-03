@@ -743,9 +743,13 @@ const wishlistForm        = document.getElementById('wishlist-form');
 const wishlistListEl      = document.getElementById('wishlist-list');
 const wishlistNameEl      = document.getElementById('wishlistName');
 const wishlistPriceEl     = document.getElementById('wishlistPrice');
+const wishlistBrandEl     = document.getElementById('wishlistBrand');
 const wishlistNoteEl      = document.getElementById('wishlistNote');
 const wishlistCategoryEl  = document.getElementById('wishlistCategory');
 const wishlistUrlEl       = document.getElementById('wishlistUrl');
+const wishlistImageUrlEl  = document.getElementById('wishlistImageUrl');
+const wishlistImageHintEl = document.getElementById('wishlist-image-hint');
+const btnUseImageUrl      = document.getElementById('btn-use-image-url');
 const btnFetchUrl     = document.getElementById('btn-fetch-url');
 const fetchBtnText    = document.getElementById('fetch-btn-text');
 const fetchStatus     = document.getElementById('fetch-status');
@@ -873,12 +877,43 @@ function showProductPreview(name, imageUrl) {
   productPreview.hidden = false;
 }
 
+function isValidImageUrl(value) {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:', 'data:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function applyManualImageUrl() {
+  const imageUrl = wishlistImageUrlEl.value.trim();
+  if (!imageUrl) {
+    wishlistImageHintEl.textContent = 'Paste a direct image address first.';
+    wishlistImageHintEl.className = 'field__hint field__hint--error';
+    return;
+  }
+  if (!isValidImageUrl(imageUrl)) {
+    wishlistImageHintEl.textContent = 'Use a valid image URL starting with http or https.';
+    wishlistImageHintEl.className = 'field__hint field__hint--error';
+    return;
+  }
+
+  pendingImageUrl = imageUrl;
+  showProductPreview(wishlistNameEl.value.trim() || 'Manual image', imageUrl);
+  wishlistImageHintEl.textContent = 'This image will be saved with the item.';
+  wishlistImageHintEl.className = 'field__hint field__hint--ok';
+  fetchStatus.textContent = 'Image added from pasted URL.';
+  fetchStatus.className = 'url-fetcher__hint url-fetcher__hint--ok';
+}
+
 /** Hide and reset the product preview strip */
 function clearProductPreview() {
   productPreview.hidden = true;
   previewImage.src = '';
   previewName.textContent = '';
   pendingImageUrl = null;
+  if (wishlistImageUrlEl) wishlistImageUrlEl.value = '';
 }
 
 /** Fetch button click handler */
@@ -904,12 +939,14 @@ btnFetchUrl.addEventListener('click', async () => {
 
   try {
     const result = await fetchProductFromUrl(url);
-    const { name, price, imageUrl, _hint } = result;
+    const { name, brand, price, imageUrl, _hint } = result;
 
     // Fill in whatever we found
     if (name)  wishlistNameEl.value  = name;
+    if (brand) wishlistBrandEl.value = brand;
     if (price) wishlistPriceEl.value = price;
     pendingImageUrl = imageUrl || null;
+    wishlistImageUrlEl.value = imageUrl || '';
 
     if (_hint === 'amazon') {
       // Amazon: image only — name/price must be typed manually
@@ -923,8 +960,8 @@ btnFetchUrl.addEventListener('click', async () => {
       }
     } else {
       // General site: report what was and wasn't found
-      const found   = [name && 'name', price && 'price', imageUrl && 'image'].filter(Boolean);
-      const missing = [!name && 'name', !price && 'price', !imageUrl && 'image'].filter(Boolean);
+      const found   = [name && 'name', brand && 'brand/store', price && 'price', imageUrl && 'image'].filter(Boolean);
+      const missing = [!name && 'name', !brand && 'brand/store', !price && 'price', !imageUrl && 'image'].filter(Boolean);
 
       if (found.length === 0) {
         fetchStatus.textContent = 'Couldn\'t extract product info — this site may block fetching. Fill in the fields manually.';
@@ -980,8 +1017,10 @@ function setSearchLoading(loading) {
 
 function applySearchResult(result) {
   if (result.name)  wishlistNameEl.value  = result.name;
+  if (result.brand) wishlistBrandEl.value = result.brand;
   if (result.price) wishlistPriceEl.value = result.price;
   pendingImageUrl = result.imageUrl || null;
+  wishlistImageUrlEl.value = result.imageUrl || '';
   if (result.name || result.imageUrl) showProductPreview(result.name, result.imageUrl);
 }
 
@@ -1084,11 +1123,12 @@ function persistWishlist(items) {
 }
 
 /** Add a new item to the wishlist */
-function addWishlistItem(name, price, note, imageUrl, analysisData, category, url) {
+function addWishlistItem(name, brand, price, note, imageUrl, analysisData, category, url) {
   const items = loadWishlist();
   items.unshift({
     id:                       Date.now().toString(),
     name:                     name.trim(),
+    brand:                    brand.trim() || null,
     price:                    price || null,
     note:                     note.trim() || null,
     imageUrl:                 imageUrl || null,
@@ -1119,13 +1159,14 @@ function deleteWishlistItem(id) {
 let editingWishlistId = null;
 
 /** Overwrite a wishlist item in-place, preserving id and createdAt */
-function updateWishlistItem(id, name, price, note, imageUrl, analysisData, category, url) {
+function updateWishlistItem(id, name, brand, price, note, imageUrl, analysisData, category, url) {
   const items = loadWishlist();
   const idx   = items.findIndex(i => i.id === id);
   if (idx === -1) return;
   items[idx] = {
     ...items[idx],
     name:                     name.trim(),
+    brand:                    brand.trim() || null,
     price:                    price || null,
     note:                     note.trim() || null,
     imageUrl:                 imageUrl || items[idx].imageUrl,
@@ -1151,10 +1192,12 @@ function editWishlistItem(id) {
   editingWishlistId = id;
 
   wishlistNameEl.value          = item.name;
+  wishlistBrandEl.value         = item.brand || '';
   wishlistPriceEl.value         = item.price !== null ? item.price : '';
   wishlistNoteEl.value          = item.note  || '';
   wishlistCategoryEl.value      = item.category || '';
   wishlistUrlEl.value           = item.productUrl || '';
+  wishlistImageUrlEl.value      = item.imageUrl || '';
   wishlistLifespanEl.value      = item.expected_lifespan        || '';
   wishlistUsesPerMonthEl.value  = item.uses_per_month           || '';
   wishlistEventTagEl.value      = item.event_tag                || '';
@@ -1309,9 +1352,10 @@ function renderWishlist() {
 
   if (allItems.length === 0) {
     wishlistListEl.innerHTML = `
-      <div class="empty-state">
+      <div class="empty-state empty-state--wishlist">
         <div class="empty-state__icon">🛍️</div>
-        <p class="empty-state__text">Your wishlist is empty.<br>Add something you've been eyeing and decide if it's worth it.</p>
+        <h3 class="empty-state__title">Start with one thing you keep thinking about</h3>
+        <p class="empty-state__text">Paste a link, search by name, or add it manually. Your saved items will show up here with price, notes, and quick actions.</p>
       </div>`;
     return;
   }
@@ -1332,18 +1376,18 @@ function renderWishlist() {
 
   wishlistListEl.innerHTML = items.map(item => {
     const imageHtml = item.imageUrl
-      ? `<img class="wishlist-card__image" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.style.display='none'" />`
-      : '';
+      ? `<img class="wishlist-card__image" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" loading="lazy" onerror="this.closest('.wishlist-card__media').classList.add('wishlist-card__media--empty'); this.remove();" />`
+      : `<span class="wishlist-card__placeholder" aria-hidden="true">WI</span>`;
 
     const priceHtml = item.price !== null
       ? `<span class="wishlist-card__price">${formatMoney(item.price)}</span>`
-      : `<span class="wishlist-card__price" style="color:var(--clr-text-muted);font-size:0.85rem;">No price set</span>`;
+      : `<span class="wishlist-card__price wishlist-card__price--empty">No price set</span>`;
 
     const runwayHtml = (_runway !== null && item.price && _monthlyExp > 0) ? (() => {
       const daysLost = Math.round((item.price / _monthlyExp) * 30);
       if (daysLost < 1) return '';
       const thin = _runway < 3;
-      return `<p class="wishlist-card__runway${thin ? ' wishlist-card__runway--warn' : ''}">~${daysLost} day${daysLost === 1 ? '' : 's'} of runway${thin ? ' · runway is thin' : ''}</p>`;
+      return `<span class="wishlist-card__runway${thin ? ' wishlist-card__runway--warn' : ''}">~${daysLost} day${daysLost === 1 ? '' : 's'} of runway${thin ? ' · runway is thin' : ''}</span>`;
     })() : '';
 
     // Avoid wrapping in hardcoded quotes — use CSS quotes instead
@@ -1354,6 +1398,9 @@ function renderWishlist() {
     const categoryHtml = item.category
       ? `<span class="wishlist-card__category">${escapeHtml(item.category)}</span>`
       : '';
+    const brandHtml = item.brand
+      ? `<span class="wishlist-card__brand">${escapeHtml(item.brand)}</span>`
+      : '';
 
     const hasSmartData = item.uses_per_month || item.expected_lifespan ||
                          item.replaces_recurring_cost || item.event_tag;
@@ -1363,21 +1410,32 @@ function renderWishlist() {
 
     return `
       <div class="wishlist-card" data-id="${item.id}">
-        ${imageHtml}
-        <div class="wishlist-card__header">
-          <span class="wishlist-card__name">${escapeHtml(item.name)}</span>
-          <span class="wishlist-card__date">${formatDate(item.createdAt)}</span>
+        <div class="wishlist-card__media${item.imageUrl ? '' : ' wishlist-card__media--empty'}">
+          ${imageHtml}
         </div>
-        ${categoryHtml}
-        ${priceHtml}
-        ${runwayHtml}
-        ${noteHtml}
-        ${smartPromptHtml}
+        <div class="wishlist-card__body">
+          <div class="wishlist-card__topline">
+            <div class="wishlist-card__meta-pills">
+              ${brandHtml}
+              ${categoryHtml || (!brandHtml ? '<span class="wishlist-card__category wishlist-card__category--muted">Wishlist</span>' : '')}
+            </div>
+            <span class="wishlist-card__date">${formatDate(item.createdAt)}</span>
+          </div>
+          <h3 class="wishlist-card__name">${escapeHtml(item.name)}</h3>
+          <div class="wishlist-card__value-row">
+            ${priceHtml}
+            ${runwayHtml}
+          </div>
+          ${noteHtml}
+          ${smartPromptHtml}
+        </div>
         <div class="wishlist-card__actions">
-          <button class="btn btn--primary"   data-waction="calculate" data-id="${item.id}">Calculate it</button>
-          <button class="btn btn--secondary" data-waction="edit"      data-id="${item.id}">Edit</button>
-          ${item.productUrl ? `<a href="${escapeHtml(item.productUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn--ghost">Link ↗</a>` : ''}
-          <button class="btn btn--ghost"     data-waction="delete"    data-id="${item.id}">Remove</button>
+          <button class="btn btn--primary wishlist-card__primary-action" data-waction="calculate" data-id="${item.id}">Calculate</button>
+          <div class="wishlist-card__secondary-actions">
+            <button class="btn btn--ghost" data-waction="edit" data-id="${item.id}">Edit</button>
+            ${item.productUrl ? `<a href="${escapeHtml(item.productUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn--ghost">Open</a>` : ''}
+            <button class="btn btn--ghost wishlist-card__remove" data-waction="delete" data-id="${item.id}">Remove</button>
+          </div>
         </div>
       </div>`;
   }).join('');
@@ -1395,9 +1453,12 @@ document.getElementById('wishlist-filters').addEventListener('click', (e) => {
 wishlistForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const name     = wishlistNameEl.value.trim();
+  const brand    = wishlistBrandEl.value.trim();
   const price    = parseFloat(wishlistPriceEl.value) || null;
   const note     = wishlistNoteEl.value.trim();
   const category = wishlistCategoryEl.value || null;
+  const manualImageUrl = wishlistImageUrlEl.value.trim();
+  const imageUrl = pendingImageUrl || (manualImageUrl && isValidImageUrl(manualImageUrl) ? manualImageUrl : null);
 
   const errEl = document.getElementById('err-wishlistName');
   if (!name) {
@@ -1419,10 +1480,10 @@ wishlistForm.addEventListener('submit', (e) => {
   const productUrl = wishlistUrlEl.value.trim() || null;
 
   if (editingWishlistId) {
-    updateWishlistItem(editingWishlistId, name, price, note, pendingImageUrl, analysisData, category, productUrl);
+    updateWishlistItem(editingWishlistId, name, brand, price, note, imageUrl, analysisData, category, productUrl);
     showToast('Item updated', 'ok');
   } else {
-    addWishlistItem(name, price, note, pendingImageUrl, analysisData, category, productUrl);
+    addWishlistItem(name, brand, price, note, imageUrl, analysisData, category, productUrl);
     showWishlistConfirmation(name);
   }
 
@@ -1442,6 +1503,16 @@ wishlistNameEl.addEventListener('input', () => {
   document.getElementById('err-wishlistName').textContent = '';
   wishlistNameEl.classList.remove('input--error');
 });
+
+wishlistImageUrlEl.addEventListener('change', applyManualImageUrl);
+wishlistImageUrlEl.addEventListener('paste', () => {
+  setTimeout(applyManualImageUrl, 0);
+});
+wishlistImageUrlEl.addEventListener('input', () => {
+  wishlistImageHintEl.textContent = 'Open the product image in a new tab, then paste that image address here.';
+  wishlistImageHintEl.className = 'field__hint';
+});
+btnUseImageUrl.addEventListener('click', applyManualImageUrl);
 
 /** Wishlist list actions — event delegation */
 wishlistListEl.addEventListener('click', (e) => {

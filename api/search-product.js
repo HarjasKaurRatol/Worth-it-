@@ -2,12 +2,12 @@
  * Vercel Serverless Function — /api/search-product
  *
  * Searches Google Shopping via SerpAPI and returns the top result's
- * name, price, and thumbnail image.
+ * name, store/brand, price, and thumbnail image.
  *
  * Requires: SERP_API_KEY environment variable in Vercel project settings.
  *
  * Usage:  GET /api/search-product?q=espresso+machine
- * Returns: { name, price, imageUrl, link, rating, reviews }
+ * Returns: { name, brand, price, imageUrl, link, rating, reviews }
  */
 
 export default async function handler(req, res) {
@@ -55,13 +55,15 @@ export default async function handler(req, res) {
   const results = data.shopping_results || [];
 
   if (results.length === 0) {
-    return res.status(200).json({ name: null, price: null, imageUrl: null, link: null });
+    return res.status(200).json({ name: null, brand: null, price: null, imageUrl: null, link: null });
   }
 
   const top = results[0];
 
   return res.status(200).json({
     name:     top.title     || null,
+    brand:    top.source    || null,
+    source:   top.source    || null,
     price:    top.extracted_price ?? null,
     imageUrl: top.thumbnail  || null,
     link:     top.link       || null,
@@ -69,6 +71,8 @@ export default async function handler(req, res) {
     reviews:  top.reviews    || null,
     allResults: results.slice(0, 5).map(r => ({
       name:     r.title          || null,
+      brand:    r.source         || null,
+      source:   r.source         || null,
       price:    r.extracted_price ?? null,
       imageUrl: r.thumbnail      || null,
       link:     r.link           || null,
