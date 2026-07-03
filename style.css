@@ -1983,6 +1983,174 @@ select:focus {
 .wishlist-filter-btn:hover { border-color: var(--clr-accent); color: var(--clr-accent); }
 .wishlist-filter-btn--active { background: var(--clr-accent); border-color: var(--clr-accent); color: #fff; }
 
+/* ---------- Wishlist decision assistant ---------- */
+.decision-assistant {
+  margin-bottom: var(--space-lg);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: var(--clr-surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.decision-assistant[hidden] { display: none; }
+
+.decision-assistant__hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-md);
+  align-items: center;
+  padding: var(--space-md);
+  background: linear-gradient(180deg, rgba(234,243,237,.72), rgba(255,255,255,.92));
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.decision-assistant__copy {
+  min-width: 0;
+}
+
+.decision-assistant__eyebrow {
+  display: block;
+  margin-bottom: 0.15rem;
+  color: var(--clr-green);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.decision-assistant__title {
+  margin: 0;
+  color: var(--clr-text);
+  font-family: var(--font-serif);
+  font-size: 1.28rem;
+  font-weight: 400;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.decision-assistant__reason {
+  margin: 0.35rem 0 0;
+  color: var(--clr-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.decision-assistant__verdict {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-xs);
+}
+
+.decision-assistant__price {
+  color: var(--clr-text);
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.decision-assistant__btn {
+  padding: 0.48rem 0.95rem;
+  font-size: 0.84rem;
+}
+
+.decision-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  border-radius: 999px;
+  padding: 0.22rem 0.62rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.decision-chip--buy { color: #245b37; background: var(--clr-green-pale); }
+.decision-chip--consider { color: var(--clr-accent-dark); background: var(--clr-accent-pale); }
+.decision-chip--wait { color: #7a5419; background: var(--clr-yellow-pale); }
+.decision-chip--skip { color: #953731; background: var(--clr-red-pale); }
+
+.decision-assistant__rankings {
+  display: grid;
+}
+
+.decision-rank {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-sm);
+  align-items: center;
+  width: 100%;
+  padding: 0.8rem var(--space-md);
+  border: 0;
+  border-bottom: 1px solid var(--clr-border);
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+.decision-rank:last-child { border-bottom: 0; }
+.decision-rank:hover { background: var(--clr-bg); }
+
+.decision-rank__num {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--clr-bg);
+  color: var(--clr-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.decision-rank__body {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.decision-rank__name {
+  color: var(--clr-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decision-rank__reason {
+  color: var(--clr-text-muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .decision-assistant__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-assistant__verdict {
+    justify-items: stretch;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .decision-assistant__btn {
+    grid-column: 1 / -1;
+  }
+
+  .decision-rank {
+    grid-template-columns: auto 1fr;
+  }
+
+  .decision-rank .decision-chip {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 /* ---------- Wishlist submit confirmation ---------- */
 .wishlist-submit-status {
   font-size: 0.875rem;

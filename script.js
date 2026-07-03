@@ -741,6 +741,7 @@ Object.keys(fields).forEach(fieldId => {
 
 const wishlistForm        = document.getElementById('wishlist-form');
 const wishlistListEl      = document.getElementById('wishlist-list');
+const decisionAssistantEl = document.getElementById('decision-assistant');
 const wishlistNameEl      = document.getElementById('wishlistName');
 const wishlistPriceEl     = document.getElementById('wishlistPrice');
 const wishlistBrandEl     = document.getElementById('wishlistBrand');
@@ -1398,11 +1399,124 @@ function renderWishlistFilters(allItems) {
   `).join('');
 }
 
+function _decisionAction(score, metrics, eventMatch, runway, daysLost) {
+  if (eventMatch || (metrics.pb !== null && metrics.pb < 6) || score >= 58) return 'Buy';
+  if ((metrics.upm !== null && metrics.upm < 2) || (metrics.cpu !== null && metrics.cpu > 12)) return 'Skip';
+  if (runway !== null && runway < 3 && daysLost !== null && daysLost > 3) return 'Wait';
+  if (score < 18) return 'Wait';
+  return 'Consider';
+}
+
+function _decisionReasons(item, metrics, eventMatch, settings, runway, daysLost) {
+  const reasons = [];
+  if (metrics.pb !== null) reasons.push(`pays back in ${Math.ceil(metrics.pb)} mo`);
+  if (metrics.cpu !== null) reasons.push(`${formatMoney(Math.round(metrics.cpu * 100) / 100)} per use`);
+  if (metrics.upm !== null && metrics.upm >= 8) reasons.push('high planned use');
+  if (eventMatch) reasons.push(`useful for ${eventMatch.title}`);
+  if (daysLost !== null && daysLost < 1) reasons.push('tiny runway impact');
+  else if (daysLost !== null && daysLost <= 7) reasons.push(`about ${Math.round(daysLost)} day${Math.round(daysLost) === 1 ? '' : 's'} of runway`);
+  if (runway !== null && runway < 3 && daysLost !== null && daysLost > 3) reasons.push('runway is thin');
+  if (item.price && settings.budget && item.price > settings.budget) reasons.push('over your enough limit');
+  if (reasons.length === 0) reasons.push('needs usage details for a sharper call');
+  return reasons.slice(0, 3);
+}
+
+function getDecisionRankings(items) {
+  const now = new Date();
+  const events = loadCalendarEvents();
+  const settings = _cache[SETTINGS_KEY] || {};
+  const monthlyExp = Number(settings.monthlyExp) || 0;
+  const savings = Number(settings.savings) || 0;
+  const runway = monthlyExp > 0 && savings > 0 ? savings / monthlyExp : null;
+
+  return items.map(item => {
+    const metrics = _siMetrics(item);
+    const eventMatch = _siEventMatch(item, events, now);
+    const daysLost = metrics.price && monthlyExp > 0 ? (metrics.price / monthlyExp) * 30 : null;
+    let score = _siScore(metrics.cpu, metrics.pb, metrics.upm, Boolean(eventMatch));
+
+    if (metrics.price !== null) {
+      if (metrics.price <= 25) score += 8;
+      else if (metrics.price <= 100) score += 4;
+      else if (metrics.price > 500) score -= 8;
+    }
+    if (daysLost !== null) {
+      if (daysLost <= 2) score += 8;
+      else if (daysLost <= 7) score += 4;
+      else if (daysLost > 30) score -= 12;
+    }
+    if (runway !== null && runway < 3 && daysLost !== null && daysLost > 3) score -= 14;
+
+    const hasDecisionData = metrics.cpu !== null || metrics.pb !== null || metrics.upm !== null || Boolean(eventMatch);
+    if (!hasDecisionData) score -= 10;
+
+    const action = _decisionAction(score, metrics, eventMatch, runway, daysLost);
+    return {
+      id: item.id,
+      name: item.name,
+      brand: item.brand || '',
+      price: metrics.price,
+      action,
+      score,
+      confidence: hasDecisionData ? 'Stronger signal' : 'Needs details',
+      reasons: _decisionReasons(item, metrics, eventMatch, settings, runway, daysLost),
+    };
+  }).sort((a, b) => b.score - a.score);
+}
+
+function renderDecisionAssistant(items) {
+  if (!decisionAssistantEl) return;
+  if (items.length === 0) {
+    decisionAssistantEl.hidden = true;
+    decisionAssistantEl.innerHTML = '';
+    return;
+  }
+
+  const rankings = getDecisionRankings(items);
+  const top = rankings[0];
+  const actionClass = {
+    Buy: 'decision-chip--buy',
+    Consider: 'decision-chip--consider',
+    Wait: 'decision-chip--wait',
+    Skip: 'decision-chip--skip',
+  };
+
+  decisionAssistantEl.hidden = false;
+  decisionAssistantEl.innerHTML = `
+    <section class="decision-assistant__hero">
+      <div class="decision-assistant__copy">
+        <span class="decision-assistant__eyebrow">Best purchase right now</span>
+        <h3 class="decision-assistant__title">${escapeHtml(top.name)}</h3>
+        <p class="decision-assistant__reason">${top.reasons.map(escapeHtml).join(' · ')}</p>
+      </div>
+      <div class="decision-assistant__verdict">
+        <span class="decision-chip ${actionClass[top.action]}">${top.action}</span>
+        <span class="decision-assistant__price">${top.price !== null ? formatMoney(top.price) : 'No price'}</span>
+        <button class="btn btn--primary decision-assistant__btn" data-waction="calculate" data-id="${top.id}">Calculate</button>
+      </div>
+    </section>
+    ${rankings.length > 1 ? `
+      <div class="decision-assistant__rankings">
+        ${rankings.slice(1, 4).map((item, index) => `
+          <button type="button" class="decision-rank" data-waction="calculate" data-id="${item.id}">
+            <span class="decision-rank__num">${index + 2}</span>
+            <span class="decision-rank__body">
+              <span class="decision-rank__name">${escapeHtml(item.name)}</span>
+              <span class="decision-rank__reason">${escapeHtml(item.reasons[0])} · ${escapeHtml(item.confidence)}</span>
+            </span>
+            <span class="decision-chip ${actionClass[item.action]}">${item.action}</span>
+          </button>
+        `).join('')}
+      </div>` : ''}
+  `;
+}
+
 /** Render the wishlist section */
 function renderWishlist() {
   const allItems = loadWishlist();
 
   renderWishlistFilters(allItems);
+  renderDecisionAssistant(allItems);
 
   if (allItems.length === 0) {
     wishlistListEl.innerHTML = `
@@ -1599,6 +1713,12 @@ wishlistListEl.addEventListener('click', (e) => {
   if (waction === 'delete')    deleteWishlistItem(id);
   if (waction === 'calculate') calculateWishlistItem(id);
   if (waction === 'edit')      editWishlistItem(id);
+});
+
+decisionAssistantEl?.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-waction="calculate"]');
+  if (!btn) return;
+  calculateWishlistItem(btn.dataset.id);
 });
 
 document.getElementById('wishlist-cancel-edit').addEventListener('click', cancelWishlistEdit);
