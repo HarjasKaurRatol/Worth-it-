@@ -814,6 +814,43 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(192,80,74,.12); }
   white-space: nowrap;
 }
 
+.image-paste-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: 46px;
+  margin-top: var(--space-sm);
+  padding: 0.65rem 1rem;
+  border: 1.5px dashed var(--clr-border);
+  border-radius: var(--radius-sm);
+  background: rgba(250,248,246,.72);
+  color: var(--clr-text-muted);
+  cursor: text;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.image-paste-zone:hover,
+.image-paste-zone:focus {
+  border-color: var(--clr-accent);
+  background: var(--clr-accent-pale);
+  color: var(--clr-text);
+  outline: none;
+}
+
+.image-paste-zone__text {
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.image-paste-zone__upload {
+  color: var(--clr-accent-dark);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .field__hint--ok {
   color: var(--clr-green);
 }

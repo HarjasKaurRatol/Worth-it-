@@ -521,7 +521,12 @@
                 />
                 <button type="button" class="btn btn--secondary manual-image-row__btn" id="btn-use-image-url">Use image</button>
               </div>
-              <p class="field__hint" id="wishlist-image-hint">Open the product image in a new tab, then paste that image address here.</p>
+              <div class="image-paste-zone" id="image-paste-zone" tabindex="0" role="button" aria-label="Paste or upload product image">
+                <span class="image-paste-zone__text">Paste image here</span>
+                <label class="image-paste-zone__upload" for="wishlistImageFile">or upload</label>
+                <input type="file" id="wishlistImageFile" accept="image/*" hidden />
+              </div>
+              <p class="field__hint" id="wishlist-image-hint">Paste an image, upload one, or use a direct image address.</p>
             </div>
             <div class="field wishlist-form-fields__note">
               <label for="wishlistNote">Note <span class="optional">optional</span></label>

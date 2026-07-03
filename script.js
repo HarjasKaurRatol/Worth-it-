@@ -748,7 +748,9 @@ const wishlistNoteEl      = document.getElementById('wishlistNote');
 const wishlistCategoryEl  = document.getElementById('wishlistCategory');
 const wishlistUrlEl       = document.getElementById('wishlistUrl');
 const wishlistImageUrlEl  = document.getElementById('wishlistImageUrl');
+const wishlistImageFileEl = document.getElementById('wishlistImageFile');
 const wishlistImageHintEl = document.getElementById('wishlist-image-hint');
+const imagePasteZone      = document.getElementById('image-paste-zone');
 const btnUseImageUrl      = document.getElementById('btn-use-image-url');
 const btnFetchUrl     = document.getElementById('btn-fetch-url');
 const fetchBtnText    = document.getElementById('fetch-btn-text');
@@ -907,6 +909,57 @@ function applyManualImageUrl() {
   fetchStatus.className = 'url-fetcher__hint url-fetcher__hint--ok';
 }
 
+function readImageFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type?.startsWith('image/')) {
+      reject(new Error('Choose an image file.'));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that image.'));
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressImageDataUrl(dataUrl, maxSize = 900, quality = 0.82) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function applyImageFile(file) {
+  try {
+    wishlistImageHintEl.textContent = 'Adding image...';
+    wishlistImageHintEl.className = 'field__hint';
+    const rawDataUrl = await readImageFile(file);
+    const imageUrl = await compressImageDataUrl(rawDataUrl);
+
+    pendingImageUrl = imageUrl;
+    wishlistImageUrlEl.value = '';
+    showProductPreview(wishlistNameEl.value.trim() || 'Pasted image', imageUrl);
+    wishlistImageHintEl.textContent = 'Pasted image will be saved with the item.';
+    wishlistImageHintEl.className = 'field__hint field__hint--ok';
+    fetchStatus.textContent = 'Image added.';
+    fetchStatus.className = 'url-fetcher__hint url-fetcher__hint--ok';
+  } catch (err) {
+    wishlistImageHintEl.textContent = err.message || 'Could not add that image.';
+    wishlistImageHintEl.className = 'field__hint field__hint--error';
+  }
+}
+
 /** Hide and reset the product preview strip */
 function clearProductPreview() {
   productPreview.hidden = true;
@@ -914,6 +967,7 @@ function clearProductPreview() {
   previewName.textContent = '';
   pendingImageUrl = null;
   if (wishlistImageUrlEl) wishlistImageUrlEl.value = '';
+  if (wishlistImageFileEl) wishlistImageFileEl.value = '';
 }
 
 /** Fetch button click handler */
@@ -1509,10 +1563,33 @@ wishlistImageUrlEl.addEventListener('paste', () => {
   setTimeout(applyManualImageUrl, 0);
 });
 wishlistImageUrlEl.addEventListener('input', () => {
-  wishlistImageHintEl.textContent = 'Open the product image in a new tab, then paste that image address here.';
+  wishlistImageHintEl.textContent = 'Paste an image, upload one, or use a direct image address.';
   wishlistImageHintEl.className = 'field__hint';
 });
 btnUseImageUrl.addEventListener('click', applyManualImageUrl);
+
+imagePasteZone.addEventListener('paste', (e) => {
+  const imageFile = [...(e.clipboardData?.files || [])].find(file => file.type.startsWith('image/'));
+  if (!imageFile) {
+    wishlistImageHintEl.textContent = 'Clipboard did not include an image.';
+    wishlistImageHintEl.className = 'field__hint field__hint--error';
+    return;
+  }
+  e.preventDefault();
+  applyImageFile(imageFile);
+});
+
+imagePasteZone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    wishlistImageFileEl.click();
+  }
+});
+
+wishlistImageFileEl.addEventListener('change', () => {
+  const [file] = wishlistImageFileEl.files || [];
+  if (file) applyImageFile(file);
+});
 
 /** Wishlist list actions — event delegation */
 wishlistListEl.addEventListener('click', (e) => {
