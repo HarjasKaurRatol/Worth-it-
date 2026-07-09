@@ -1,0 +1,9 @@
+{
+  "name": "worth-it",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Worth It? — vanilla JS/HTML/CSS site deployed on Vercel",
+  "scripts": {
+    "test": "node --test"
+  }
+}
