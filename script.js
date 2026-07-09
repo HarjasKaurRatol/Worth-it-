@@ -129,6 +129,42 @@ const EXAMPLES = {
     maintenanceCost:  0,
     lifespanMonths:   60,
   },
+  'air-fryer': {
+    productName:      'Air Fryer',
+    productCost:      100,
+    alternativeCost:  12,
+    frequencyPerMonth: 8,
+    usagePerMonth:    8,
+    maintenanceCost:  0,
+    lifespanMonths:   48,
+  },
+  'bike': {
+    productName:      'Commuter Bike',
+    productCost:      450,
+    alternativeCost:  6,
+    frequencyPerMonth: 20,
+    usagePerMonth:    20,
+    maintenanceCost:  10,
+    lifespanMonths:   60,
+  },
+  'water-filter': {
+    productName:      'Water Filter Pitcher',
+    productCost:      35,
+    alternativeCost:  6,
+    frequencyPerMonth: 4,
+    usagePerMonth:    30,
+    maintenanceCost:  4,
+    lifespanMonths:   24,
+  },
+  'treadmill': {
+    productName:      'Treadmill',
+    productCost:      1200,
+    alternativeCost:  45,
+    frequencyPerMonth: 1,
+    usagePerMonth:    3,
+    maintenanceCost:  15,
+    lifespanMonths:   60,
+  },
 };
 
 // ─── DOM references ───────────────────────────────────────────────────────────

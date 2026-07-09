@@ -97,6 +97,76 @@ describe('calculateCore', () => {
   });
 });
 
+// ─── calculateCore: generic real-world examples ───────────────────────────────
+// These mirror the "Try an example" cards on the homepage (script.js EXAMPLES),
+// covering a spread of everyday purchase types and both possible outcomes.
+
+describe('calculateCore — generic real-world examples', () => {
+  test('air fryer replacing frequent takeout: fast payback, worth it', () => {
+    const calc = calculateCore({
+      productCost: 100, alternativeCost: 12, frequencyPerMonth: 8,
+      usagePerMonth: 8, maintenanceCost: 0,
+    });
+    assert.equal(calc.monthlyAlternativeCost, 96);
+    assert.ok(calc.breakEvenMonths < 2);
+    assert.equal(calc.verdict, 'worth-it');
+  });
+
+  test('commuter bike replacing daily rideshare: worth it with upkeep factored in', () => {
+    const calc = calculateCore({
+      productCost: 450, alternativeCost: 6, frequencyPerMonth: 20,
+      usagePerMonth: 20, maintenanceCost: 10,
+    });
+    assert.equal(calc.netMonthlySavings, 110); // (6*20) - 10
+    assert.equal(calc.yearlySavings, 870);
+    assert.equal(calc.verdict, 'worth-it');
+  });
+
+  test('water filter pitcher replacing bottled water: cheap, near-immediate payback', () => {
+    const calc = calculateCore({
+      productCost: 35, alternativeCost: 6, frequencyPerMonth: 4,
+      usagePerMonth: 30, maintenanceCost: 4,
+    });
+    assert.ok(calc.breakEvenMonths < 2);
+    assert.ok(calc.costPerUse < 0.10); // used ~daily, so pennies per use
+    assert.equal(calc.verdict, 'worth-it');
+  });
+
+  test('treadmill bought instead of a gym membership but rarely used: honest "probably not"', () => {
+    // Positive month-to-month savings can still fail to pay off within a year —
+    // this is the case the app is designed to catch instead of just approving any
+    // purchase with netMonthlySavings > 0.
+    const calc = calculateCore({
+      productCost: 1200, alternativeCost: 45, frequencyPerMonth: 1,
+      usagePerMonth: 3, maintenanceCost: 15,
+    });
+    assert.equal(calc.netMonthlySavings, 30);
+    assert.ok(calc.netMonthlySavings > 0);
+    assert.ok(calc.yearlySavings < 0);
+    assert.equal(calc.verdict, 'probably-not');
+  });
+
+  test('streaming service bundle replacing cable: recurring subscription vs. recurring cost', () => {
+    const calc = calculateCore({
+      productCost: 0, alternativeCost: 90, frequencyPerMonth: 1,
+      usagePerMonth: 30, maintenanceCost: 25, // $25/mo streaming vs $90/mo cable
+    });
+    assert.equal(calc.netMonthlySavings, 65);
+    assert.equal(calc.breakEvenMonths, 0); // no upfront cost, savings start immediately
+    assert.equal(calc.verdict, 'worth-it');
+  });
+
+  test('impulse gadget with no real alternative cost: does not pay for itself', () => {
+    const calc = calculateCore({
+      productCost: 250, alternativeCost: 0, frequencyPerMonth: 1,
+      usagePerMonth: 2, maintenanceCost: 0,
+    });
+    assert.equal(calc.monthlyAlternativeCost, 0);
+    assert.equal(calc.breakEvenMonths, null);
+    assert.equal(calc.verdict, 'no-savings');
+  });
+});
+
 // ─── Compounding opportunity cost ─────────────────────────────────────────────
 
 describe('_compoundFV', () => {
